@@ -1,12 +1,21 @@
 export type UserRole = "user" | "admin";
 
-export type OrderStatus = "pending" | "confirmed" | "cancelled" | "delivered";
+export type OrderStatus = "pending" | "confirmed" | "cancelled" | "delivered" | "failed" | "failed_reported";
+
+export type DrainMode = "automatic" | "confirmation";
+
+export type ChargeStatus = "charged" | "pending" | "refunded";
+
+export type DeliveryUserStatus = "pending" | "confirmed" | "failed_reported";
+
+export type DeliveryAdminStatus = "pending" | "confirmed" | "failed_confirmed" | "rejected_failed";
 
 export interface Profile {
   id: string;
   full_name: string;
   role: UserRole;
   balance: number;
+  drain_mode: DrainMode;
   created_at: string;
   updated_at: string;
 }
@@ -31,11 +40,34 @@ export interface Order {
   quantity: number;
   total_price: number;
   status: OrderStatus;
+  billing_mode: DrainMode;
+  charge_status: ChargeStatus;
+  charged_at: string | null;
+  refunded_at: string | null;
+  user_delivery_status: DeliveryUserStatus;
+  admin_delivery_status: DeliveryAdminStatus;
+  failure_note: string | null;
+  recurring_order_id: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields
   menu_item?: MenuItem;
   profile?: Profile;
+}
+
+export interface RecurringOrder {
+  id: string;
+  user_id: string;
+  menu_item_id: string;
+  quantity: number;
+  days_of_week: number[];
+  schedule_type: "daily" | "weekdays" | "selected_days";
+  start_date: string;
+  end_date: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  menu_item?: MenuItem;
 }
 
 export interface Transaction {
@@ -69,6 +101,13 @@ export interface CancelOrderResult {
 export interface TopUpResult {
   success?: boolean;
   error?: string;
+  new_balance?: number;
+}
+
+export interface OrderOutcomeResult {
+  success?: boolean;
+  error?: string;
+  status?: string;
   new_balance?: number;
 }
 

@@ -3,7 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { BalanceCard } from "@/components/balance-card";
 import { OrderForm } from "@/components/order-form";
 import { UpcomingOrders } from "@/components/upcoming-orders";
-import type { MenuItem, Order, Profile } from "@/lib/types";
+import { DrainModeCard } from "@/components/drain-mode-card";
+import { RecurringOrdersManager } from "@/components/recurring-orders-manager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { MenuItem, Order, Profile, RecurringOrder } from "@/lib/types";
 import { format, addDays } from "date-fns";
 
 export default async function DashboardPage() {
@@ -12,8 +15,10 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/signin");
 
+  await supabase.rpc("sync_my_recurring_orders", { p_days_ahead: 14 });
+
   // Fetch profile, menu items, and upcoming orders in parallel
-  const [profileRes, menuRes, ordersRes] = await Promise.all([
+  const [profileRes, menuRes, ordersRes, recurringRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("menu_items").select("*").eq("is_active", true).order("price", { ascending: true }),
     supabase
@@ -23,11 +28,17 @@ export default async function DashboardPage() {
       .gte("order_date", new Date().toISOString().split("T")[0])
       .neq("status", "cancelled")
       .order("order_date", { ascending: true }),
+    supabase
+      .from("recurring_orders")
+      .select("*, menu_item:menu_items(*)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const profile = profileRes.data as Profile;
   const menuItems = (menuRes.data || []) as MenuItem[];
   const upcomingOrders = (ordersRes.data || []) as Order[];
+  const recurringOrders = (recurringRes.data || []) as RecurringOrder[];
 
   if (!profile) redirect("/auth/signin");
 
@@ -52,17 +63,38 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1">{cutoffMessage}</p>
       </div>
 
-      <BalanceCard balance={profile.balance} cheapestItem={cheapestItem} />
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="new-order">New Order</TabsTrigger>
+          <TabsTrigger value="recurring">Recurring</TabsTrigger>
+          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+        </TabsList>
 
-      <OrderForm
-        menuItems={menuItems}
-        balance={profile.balance}
-        orderDateLabel={orderDateLabel}
-        canOrder={true}
-        cutoffMessage={cutoffMessage}
-      />
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <BalanceCard balance={profile.balance} cheapestItem={cheapestItem} />
+          <DrainModeCard currentMode={profile.drain_mode} />
+        </TabsContent>
 
-      <UpcomingOrders orders={upcomingOrders} />
+        <TabsContent value="new-order" className="mt-4">
+          <OrderForm
+            menuItems={menuItems}
+            balance={profile.balance}
+            drainMode={profile.drain_mode}
+            orderDateLabel={orderDateLabel}
+            canOrder={true}
+            cutoffMessage={cutoffMessage}
+          />
+        </TabsContent>
+
+        <TabsContent value="recurring" className="mt-4">
+          <RecurringOrdersManager menuItems={menuItems} recurringOrders={recurringOrders} />
+        </TabsContent>
+
+        <TabsContent value="upcoming" className="mt-4">
+          <UpcomingOrders orders={upcomingOrders} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

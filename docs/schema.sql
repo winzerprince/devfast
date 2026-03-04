@@ -34,7 +34,30 @@ CREATE TABLE IF NOT EXISTS public.orders (
   order_date DATE NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
   total_price NUMERIC NOT NULL CHECK (total_price >= 0),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'delivered')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'delivered', 'failed', 'failed_reported')),
+  billing_mode TEXT NOT NULL DEFAULT 'automatic' CHECK (billing_mode IN ('automatic', 'confirmation')),
+  charge_status TEXT NOT NULL DEFAULT 'charged' CHECK (charge_status IN ('charged', 'pending', 'refunded')),
+  charged_at TIMESTAMPTZ,
+  refunded_at TIMESTAMPTZ,
+  user_delivery_status TEXT NOT NULL DEFAULT 'pending' CHECK (user_delivery_status IN ('pending', 'confirmed', 'failed_reported')),
+  admin_delivery_status TEXT NOT NULL DEFAULT 'pending' CHECK (admin_delivery_status IN ('pending', 'confirmed', 'failed_confirmed', 'rejected_failed')),
+  failure_note TEXT,
+  recurring_order_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3b. RECURRING_ORDERS TABLE
+CREATE TABLE IF NOT EXISTS public.recurring_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  menu_item_id UUID NOT NULL REFERENCES public.menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  days_of_week INTEGER[] NOT NULL,
+  schedule_type TEXT NOT NULL DEFAULT 'selected_days' CHECK (schedule_type IN ('daily', 'weekdays', 'selected_days')),
+  start_date DATE NOT NULL DEFAULT (NOW() AT TIME ZONE 'Africa/Kampala')::DATE,
+  end_date DATE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

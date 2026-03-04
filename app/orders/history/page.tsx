@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { OrderHistoryList } from "@/components/order-history-list";
+import { OrderCalendar } from "@/components/order-calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Order } from "@/lib/types";
 import { History } from "lucide-react";
 
@@ -21,13 +22,6 @@ export default async function OrderHistoryPage() {
 
   const allOrders = (orders || []) as Order[];
 
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    cancelled: "bg-red-100 text-red-800",
-    delivered: "bg-green-100 text-green-800",
-  };
-
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
@@ -38,38 +32,28 @@ export default async function OrderHistoryPage() {
         <p className="text-muted-foreground text-sm mt-1">Your past and upcoming orders</p>
       </div>
 
-      {allOrders.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No orders yet. Head to the dashboard to place your first order!
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {allOrders.map((order) => (
-            <Card key={order.id}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="font-medium">{order.menu_item?.name}</div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{format(new Date(order.order_date), "EEE, MMM d, yyyy")}</span>
-                      <span>&middot;</span>
-                      <span>x{order.quantity}</span>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <div className="font-medium">{Number(order.total_price).toLocaleString()} UGX</div>
-                    <Badge className={`text-xs ${statusColors[order.status] || ""}`} variant="secondary">
-                      {order.status}
-                    </Badge>
-                  </div>
-                </div>
+      <Tabs defaultValue="calendar" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+          <TabsTrigger value="list">List View</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar" className="mt-4">
+          <OrderCalendar orders={allOrders} />
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-4">
+          {allOrders.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No orders yet. Head to the dashboard to place your first order!
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <OrderHistoryList orders={allOrders} />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
