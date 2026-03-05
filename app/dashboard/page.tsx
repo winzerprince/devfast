@@ -88,7 +88,7 @@ export default async function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="recurring" className="mt-4">
-          <RecurringOrdersManager menuItems={menuItems} recurringOrders={recurringOrders} />
+          <RecurringOrdersManager menuItems={menuItems} recurringOrders={recurringOrders} userId={user.id} />
         </TabsContent>
 
         <TabsContent value="upcoming" className="mt-4">

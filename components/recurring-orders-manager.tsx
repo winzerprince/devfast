@@ -25,6 +25,7 @@ const DAY_OPTIONS = [
 interface RecurringOrdersManagerProps {
   menuItems: MenuItem[];
   recurringOrders: RecurringOrder[];
+  userId: string;
 }
 
 interface DayLine {
@@ -54,7 +55,7 @@ function createInitialDayPlan(orders: RecurringOrder[]): DayPlan {
   return plan;
 }
 
-export function RecurringOrdersManager({ menuItems, recurringOrders }: RecurringOrdersManagerProps) {
+export function RecurringOrdersManager({ menuItems, recurringOrders, userId }: RecurringOrdersManagerProps) {
   const [activeDay, setActiveDay] = useState<number>(1);
   const [selectedItem, setSelectedItem] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
@@ -152,6 +153,7 @@ export function RecurringOrdersManager({ menuItems, recurringOrders }: Recurring
 
       const payload = Object.entries(dayPlan).flatMap(([day, lines]) =>
         lines.map((line) => ({
+          user_id: userId,
           menu_item_id: line.menu_item_id,
           quantity: line.quantity,
           schedule_type: "selected_days" as const,
