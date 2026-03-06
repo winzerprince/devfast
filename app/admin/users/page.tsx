@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TopUpForm } from "@/components/top-up-form";
 import { Users } from "lucide-react";
@@ -27,31 +27,39 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="space-y-3">
-        {users.map((user) => (
-          <Card key={user.id}>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{user.full_name || "Unnamed"}</span>
-                    {user.role === "admin" && (
-                      <Badge variant="secondary" className="text-xs">admin</Badge>
-                    )}
+        {users.map((user) => {
+          const hasDebt = Number(user.outstanding_debt) > 0;
+          return (
+            <Card key={user.id}>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{user.full_name || "Unnamed"}</span>
+                      {user.role === "admin" && (
+                        <Badge variant="secondary" className="text-xs">admin</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-medium ${Number(user.balance) < LOW_BALANCE_THRESHOLD ? "text-destructive" : "text-green-600"}`}>
+                        {Number(user.balance).toLocaleString()} UGX
+                      </span>
+                      {Number(user.balance) < LOW_BALANCE_THRESHOLD && (
+                        <Badge variant="destructive" className="text-xs">Low</Badge>
+                      )}
+                      {hasDebt && (
+                        <Badge variant="destructive" className="text-xs">
+                          Debt: {Number(user.outstanding_debt).toLocaleString()} UGX
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium ${Number(user.balance) < LOW_BALANCE_THRESHOLD ? "text-destructive" : "text-green-600"}`}>
-                      {Number(user.balance).toLocaleString()} UGX
-                    </span>
-                    {Number(user.balance) < LOW_BALANCE_THRESHOLD && (
-                      <Badge variant="destructive" className="text-xs">Low</Badge>
-                    )}
-                  </div>
+                  <TopUpForm user={user} />
                 </div>
-                <TopUpForm user={user} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

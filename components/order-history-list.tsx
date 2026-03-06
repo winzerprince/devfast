@@ -71,13 +71,24 @@ export function OrderHistoryList({ orders }: OrderHistoryListProps) {
                   <span>x{order.quantity}</span>
                   <span>&middot;</span>
                   <span>{order.billing_mode === "automatic" ? "Auto" : "Confirm"}</span>
+                  {order.payment_method === "pay_on_delivery" && (
+                    <>
+                      <span>&middot;</span>
+                      <span>Pay on Delivery</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="text-right space-y-1">
                 <div className="font-medium">{Number(order.total_price).toLocaleString()} UGX</div>
-                <Badge className={`text-xs ${statusColors[order.status] || ""}`} variant="secondary">
-                  {order.status}
-                </Badge>
+                <div className="flex items-center gap-1 justify-end">
+                  <Badge className={`text-xs ${statusColors[order.status] || ""}`} variant="secondary">
+                    {order.status}
+                  </Badge>
+                  {order.payment_method === "pay_on_delivery" && order.payment_status === "unpaid" && (
+                    <Badge variant="destructive" className="text-xs">Unpaid</Badge>
+                  )}
+                </div>
               </div>
             </div>
 

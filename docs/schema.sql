@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   balance NUMERIC NOT NULL DEFAULT 0,
+  outstanding_debt NUMERIC NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.menu_items (
   name TEXT NOT NULL,
   price NUMERIC NOT NULL CHECK (price > 0),
   description TEXT DEFAULT '',
+  image_url TEXT DEFAULT NULL,
   is_special BOOLEAN NOT NULL DEFAULT FALSE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_by UUID REFERENCES public.profiles(id),
@@ -37,6 +39,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'delivered', 'failed', 'failed_reported')),
   billing_mode TEXT NOT NULL DEFAULT 'automatic' CHECK (billing_mode IN ('automatic', 'confirmation')),
   charge_status TEXT NOT NULL DEFAULT 'charged' CHECK (charge_status IN ('charged', 'pending', 'refunded')),
+  payment_method TEXT NOT NULL DEFAULT 'prepaid' CHECK (payment_method IN ('prepaid', 'pay_on_delivery')),
+  payment_status TEXT NOT NULL DEFAULT 'paid' CHECK (payment_status IN ('paid', 'unpaid')),
   charged_at TIMESTAMPTZ,
   refunded_at TIMESTAMPTZ,
   user_delivery_status TEXT NOT NULL DEFAULT 'pending' CHECK (user_delivery_status IN ('pending', 'confirmed', 'failed_reported')),
@@ -72,12 +76,23 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 5. MENU_AVAILABILITY TABLE (date-based availability)
+CREATE TABLE IF NOT EXISTS public.menu_availability (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  menu_item_id UUID NOT NULL REFERENCES public.menu_items(id) ON DELETE CASCADE,
+  available_date DATE NOT NULL,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(menu_item_id, available_date)
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_order_date ON public.orders(order_date);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON public.transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_menu_items_is_active ON public.menu_items(is_active);
+CREATE INDEX IF NOT EXISTS idx_menu_availability_date ON public.menu_availability(available_date);
 
 -- ============================================
 -- RLS + Triggers + Functions
