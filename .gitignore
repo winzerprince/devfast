@@ -46,3 +46,9 @@ CLAUDE.md
 
 # vscode mcp config (contains secrets)
 .vscode/mcp.json
+
+# serwist PWA build artifacts
+public/sw.js
+public/sw.js.map
+public/serwist-*.js
+public/workbox-*.js

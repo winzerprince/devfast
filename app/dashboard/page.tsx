@@ -10,7 +10,14 @@ import { SpendingSummary } from "@/components/spending-summary";
 import type { MenuItem, Order, Profile, RecurringOrder } from "@/lib/types";
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
+  const validTabs = ["overview", "new-order", "recurring", "upcoming"];
+  const defaultTab = tab && validTabs.includes(tab) ? tab : "overview";
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -99,8 +106,8 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1">{cutoffMessage}</p>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue={defaultTab} key={defaultTab} className="w-full">
+        <TabsList className="hidden md:grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="new-order">New Order</TabsTrigger>
           <TabsTrigger value="recurring">Recurring</TabsTrigger>
