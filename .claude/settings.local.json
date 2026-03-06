@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(git checkout -b design-changes)",
-      "Bash(npm run build 2>&1 | tail -80)"
+      "Bash(npm run build 2>&1 | tail -80)",
+      "Bash(npx next lint 2>&1 | tail -40)",
+      "Bash(npx tsc --noEmit 2>&1 | tail -60)",
+      "Bash(npx tsc --noEmit 2>&1 | tail -30)",
+      "Bash(npm ls lightningcss 2>&1)",
+      "Bash(ls node_modules/lightningcss/*.node 2>&1 || echo \"No .node files\"; ls node_modules/lightningcss/lightningcss.linux-x64-gnu.node 2>&1)",
+      "Bash(npm install lightningcss-linux-x64-gnu 2>&1 | tail -10)"
     ]
   }
 }
