@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout -b design-changes)",
+      "Bash(npm run build 2>&1 | tail -80)"
+    ]
+  }
+}

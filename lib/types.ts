@@ -6,6 +6,10 @@ export type DrainMode = "automatic" | "confirmation";
 
 export type ChargeStatus = "charged" | "pending" | "refunded";
 
+export type PaymentMethod = "prepaid" | "pay_on_delivery";
+
+export type PaymentStatus = "paid" | "unpaid";
+
 export type DeliveryUserStatus = "pending" | "confirmed" | "failed_reported";
 
 export type DeliveryAdminStatus = "pending" | "confirmed" | "failed_confirmed" | "rejected_failed";
@@ -15,6 +19,7 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   balance: number;
+  outstanding_debt: number;
   drain_mode: DrainMode;
   created_at: string;
   updated_at: string;
@@ -25,6 +30,7 @@ export interface MenuItem {
   name: string;
   price: number;
   description: string;
+  image_url: string | null;
   is_special: boolean;
   is_active: boolean;
   created_by: string | null;
@@ -42,6 +48,8 @@ export interface Order {
   status: OrderStatus;
   billing_mode: DrainMode;
   charge_status: ChargeStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
   charged_at: string | null;
   refunded_at: string | null;
   user_delivery_status: DeliveryUserStatus;
@@ -109,6 +117,19 @@ export interface OrderOutcomeResult {
   error?: string;
   status?: string;
   new_balance?: number;
+}
+
+export interface MenuAvailability {
+  id: string;
+  menu_item_id: string;
+  available_date: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface MarkPaidResult {
+  success?: boolean;
+  error?: string;
 }
 
 // Low balance threshold in UGX

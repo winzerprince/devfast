@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Check, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, Loader2, ShieldCheck, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, MarkPaidResult } from "@/lib/types";
 
 interface AdminOrderListProps {
   initialOrders: Order[];
@@ -98,6 +98,33 @@ export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
     }
   }
 
+  async function markPaid(orderId: string) {
+    setUpdating(orderId + "mark_paid");
+    try {
+      const { data, error } = await supabase.rpc("admin_mark_paid", {
+        p_order_id: orderId,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      const result = data as MarkPaidResult | null;
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Order marked as paid");
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, payment_status: "paid" as const } : o)));
+    } catch {
+      toast.error("Failed to mark as paid");
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   if (orders.length === 0) {
     return <p className="text-sm text-muted-foreground">No orders found.</p>;
   }
@@ -115,18 +142,29 @@ export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 <div className="text-sm text-muted-foreground">
                   {order.menu_item?.name} x{order.quantity}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{format(new Date(order.order_date), "EEE, MMM d")}</span>
                   <span>{Number(order.total_price).toLocaleString()} UGX</span>
                   <span>•</span>
                   <span>{order.billing_mode === "automatic" ? "Auto drain" : "Confirm drain"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>Charge: {order.charge_status}</span>
                   <span>•</span>
                   <span>User: {order.user_delivery_status}</span>
                   <span>•</span>
                   <span>Admin: {order.admin_delivery_status}</span>
+                </div>
+                <div className="flex items-center gap-1 mt-1">
+                  {order.payment_method === "pay_on_delivery" && (
+                    <Badge variant="outline" className="text-xs">Pay on Delivery</Badge>
+                  )}
+                  {order.payment_method === "pay_on_delivery" && order.payment_status === "unpaid" && (
+                    <Badge variant="destructive" className="text-xs">Unpaid</Badge>
+                  )}
+                  {order.payment_method === "pay_on_delivery" && order.payment_status === "paid" && (
+                    <Badge className="text-xs bg-green-100 text-green-800">Paid</Badge>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -191,6 +229,22 @@ export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                 )}
                 Reject failed claim
               </Button>
+              {order.payment_method === "pay_on_delivery" && order.payment_status === "unpaid" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-green-600 text-green-700 hover:bg-green-50"
+                  onClick={() => markPaid(order.id)}
+                  disabled={Boolean(updating)}
+                >
+                  {updating === order.id + "mark_paid" ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Banknote className="h-4 w-4 mr-1" />
+                  )}
+                  Mark Paid
+                </Button>
+              )}
             </div>
             {order.failure_note ? (
               <p className="text-xs text-muted-foreground mt-2">Note: {order.failure_note}</p>
