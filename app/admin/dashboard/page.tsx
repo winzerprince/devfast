@@ -63,7 +63,7 @@ export default async function AdminDashboardPage() {
 
   // Top spenders this week
   const weekSpenderMap = new Map<string, { name: string; total: number }>();
-  for (const o of weekOrders as { total_price: number; user_id: string; profile: { full_name: string } | null }[]) {
+  for (const o of weekOrders as unknown as { total_price: number; user_id: string; profile: { full_name: string } | null }[]) {
     const existing = weekSpenderMap.get(o.user_id) || { name: (o.profile?.full_name) || "Unknown", total: 0 };
     existing.total += Number(o.total_price);
     weekSpenderMap.set(o.user_id, existing);
@@ -74,7 +74,7 @@ export default async function AdminDashboardPage() {
 
   // Top spenders this month
   const monthSpenderMap = new Map<string, { name: string; total: number }>();
-  for (const o of monthOrders as { total_price: number; user_id: string; profile: { full_name: string } | null }[]) {
+  for (const o of monthOrders as unknown as { total_price: number; user_id: string; profile: { full_name: string } | null }[]) {
     const existing = monthSpenderMap.get(o.user_id) || { name: (o.profile?.full_name) || "Unknown", total: 0 };
     existing.total += Number(o.total_price);
     monthSpenderMap.set(o.user_id, existing);
