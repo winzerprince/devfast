@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
-import { AlertTriangle, Check, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 import type { Order, OrderOutcomeResult } from "@/lib/types";
 
 interface OrderHistoryListProps {
@@ -62,8 +63,18 @@ export function OrderHistoryList({ orders }: OrderHistoryListProps) {
       {orders.map((order) => (
         <Card key={order.id}>
           <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
+            <div className="flex items-start gap-3 justify-between">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                {order.menu_item?.image_url ? (
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border">
+                    <Image src={order.menu_item.image_url} alt={order.menu_item.name ?? ""} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+              <div className="space-y-1 flex-1 min-w-0">
                 <div className="font-medium">{order.menu_item?.name}</div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{format(new Date(order.order_date), "EEE, MMM d, yyyy")}</span>
@@ -79,7 +90,8 @@ export function OrderHistoryList({ orders }: OrderHistoryListProps) {
                   )}
                 </div>
               </div>
-              <div className="text-right space-y-1">
+              </div>
+              <div className="text-right space-y-1 shrink-0">
                 <div className="font-medium">{Number(order.total_price).toLocaleString()} UGX</div>
                 <div className="flex items-center gap-1 justify-end">
                   <Badge className={`text-xs ${statusColors[order.status] || ""}`} variant="secondary">

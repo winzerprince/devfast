@@ -272,11 +272,11 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
             <CardContent className="py-4">
               <div className="flex items-start gap-3">
                 {item.image_url ? (
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 border">
                     <Image src={item.image_url} alt={item.name} fill className="object-cover" />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 border">
+                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
                     <ImageIcon className="h-6 w-6 text-muted-foreground" />
                   </div>
                 )}

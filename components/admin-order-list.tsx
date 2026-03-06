@@ -6,23 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Check, Loader2, ShieldCheck, Banknote } from "lucide-react";
+import { AlertTriangle, Check, ImageIcon, Loader2, ShieldCheck, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import Image from "next/image";
 import type { Order, OrderStatus, MarkPaidResult } from "@/lib/types";
 
 interface AdminOrderListProps {
   initialOrders: Order[];
 }
-
-const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  cancelled: "bg-red-100 text-red-800",
-  delivered: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-  failed_reported: "bg-orange-100 text-orange-800",
-};
 
 export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
@@ -134,7 +126,17 @@ export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
       {orders.map((order) => (
         <Card key={order.id}>
           <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                {order.menu_item?.image_url ? (
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border">
+                    <Image src={order.menu_item.image_url} alt={order.menu_item.name ?? ""} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="font-medium text-sm truncate">
                   {order.profile?.full_name || "Unknown"}
@@ -166,6 +168,7 @@ export function AdminOrderList({ initialOrders }: AdminOrderListProps) {
                     <Badge className="text-xs bg-green-100 text-green-800">Paid</Badge>
                   )}
                 </div>
+              </div>
               </div>
               <div className="flex items-center gap-2">
                 {updating === order.id ? (
