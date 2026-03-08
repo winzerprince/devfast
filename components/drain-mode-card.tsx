@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Wallet } from "lucide-react";
 import type { DrainMode } from "@/lib/types";
@@ -53,41 +50,54 @@ export function DrainModeCard({ currentMode }: DrainModeCardProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Wallet className="h-5 w-5" />
-          Billing Mode
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
-            {mode === "automatic" ? "Automatic Drain" : "Confirmation Drain"}
-          </Badge>
+    <div className="rounded-2xl border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="bg-primary/10 rounded-xl p-2.5">
+          <Wallet className="h-5 w-5 text-primary" />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Automatic: money is deducted when an order is created. Confirmation: money is deducted only after both you and admin confirm delivery.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Button
-            variant={mode === "automatic" ? "default" : "outline"}
-            onClick={() => setDrainMode("automatic")}
-            disabled={saving}
-          >
-            {saving && mode !== "automatic" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Automatic Drain
-          </Button>
-          <Button
-            variant={mode === "confirmation" ? "default" : "outline"}
-            onClick={() => setDrainMode("confirmation")}
-            disabled={saving}
-          >
-            {saving && mode !== "confirmation" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Confirmation Drain
-          </Button>
+        <div>
+          <p className="font-semibold text-sm">Billing Mode</p>
+          <p className="text-xs text-muted-foreground">
+            {mode === "automatic"
+              ? "Charged immediately when order is placed"
+              : "Charged after delivery is confirmed"}
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Segmented control */}
+      <div className="flex rounded-xl border overflow-hidden">
+        <button
+          onClick={() => setDrainMode("automatic")}
+          disabled={saving}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors active:opacity-80 ${
+            mode === "automatic"
+              ? "bg-primary text-primary-foreground"
+              : "bg-background text-muted-foreground"
+          }`}
+        >
+          {saving && mode !== "automatic" ? (
+            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+          ) : (
+            "Automatic"
+          )}
+        </button>
+        <button
+          onClick={() => setDrainMode("confirmation")}
+          disabled={saving}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors border-l active:opacity-80 ${
+            mode === "confirmation"
+              ? "bg-primary text-primary-foreground"
+              : "bg-background text-muted-foreground"
+          }`}
+        >
+          {saving && mode !== "confirmation" ? (
+            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+          ) : (
+            "Confirmation"
+          )}
+        </button>
+      </div>
+    </div>
   );
 }

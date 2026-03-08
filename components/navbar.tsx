@@ -32,6 +32,16 @@ const adminLinks = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
 ];
 
+function getPageTitle(pathname: string): string {
+  if (pathname === "/dashboard") return "DevFast";
+  if (pathname.startsWith("/orders/history")) return "Order History";
+  if (pathname === "/admin/dashboard") return "Dashboard";
+  if (pathname === "/admin/orders") return "Orders";
+  if (pathname === "/admin/menu") return "Menu";
+  if (pathname === "/admin/users") return "Users";
+  return "DevFast";
+}
+
 export function Navbar({ profile }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,6 +49,7 @@ export function Navbar({ profile }: NavbarProps) {
 
   const isAdmin = profile.role === "admin";
   const links = isAdmin ? [...userLinks, ...adminLinks] : userLinks;
+  const pageTitle = getPageTitle(pathname);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -51,15 +62,46 @@ export function Navbar({ profile }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo */}
+      {/* Mobile header: icon | page title | avatar */}
+      <div className="md:hidden flex items-center h-14 px-4 pt-[env(safe-area-inset-top)]">
+        <div className="w-10 flex items-center">
+          <Coffee className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 text-center">
+          <span className="font-semibold text-sm">{pageTitle}</span>
+        </div>
+        <div className="w-10 flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                {initial}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="font-normal">
+                <div className="text-sm font-medium">{profile.full_name || "User"}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {Number(profile.balance).toLocaleString()} UGX
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Desktop header: logo | nav links */}
+      <div className="hidden md:flex container mx-auto px-4 h-14 items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
-          <Coffee className="h-5 w-5 text-orange-500" />
+          <Coffee className="h-5 w-5 text-primary" />
           <span>DevFast</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="flex items-center gap-1">
           {links.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -82,30 +124,6 @@ export function Navbar({ profile }: NavbarProps) {
             Sign Out
           </Button>
         </nav>
-
-        {/* Mobile avatar dropdown */}
-        <div className="md:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white text-sm font-semibold">
-                {initial}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="font-normal">
-                <div className="text-sm font-medium">{profile.full_name || "User"}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Balance: {Number(profile.balance).toLocaleString()} UGX
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
     </header>
   );

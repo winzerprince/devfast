@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AdminOrderList } from "@/components/admin-order-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ClipboardList } from "lucide-react";
 import type { Order } from "@/lib/types";
 
 export default async function AdminOrdersPage() {
@@ -40,22 +39,16 @@ export default async function AdminOrdersPage() {
   const unpaidOrders = (unpaidRes.data || []) as Order[];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ClipboardList className="h-6 w-6" />
-          Order Management
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">View and manage all orders</p>
-      </div>
-
+    <div className="space-y-4">
       <Tabs defaultValue="today" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="today">Today ({todayOrders.length})</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming ({upcomingOrders.length})</TabsTrigger>
-          <TabsTrigger value="unpaid">Unpaid ({unpaidOrders.length})</TabsTrigger>
-          <TabsTrigger value="past">Past ({pastOrders.length})</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="grid grid-cols-4 min-w-[360px]">
+            <TabsTrigger value="today">Today ({todayOrders.length})</TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming ({upcomingOrders.length})</TabsTrigger>
+            <TabsTrigger value="unpaid">Unpaid ({unpaidOrders.length})</TabsTrigger>
+            <TabsTrigger value="past">Past ({pastOrders.length})</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="today" className="mt-4">
           <AdminOrderList initialOrders={todayOrders} />
         </TabsContent>

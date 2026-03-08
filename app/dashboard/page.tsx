@@ -100,10 +100,12 @@ export default async function DashboardPage({
   const cheapestItem = menuItems.length > 0 ? menuItems[0].price : undefined;
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, {profile.full_name || "there"}!</h1>
-        <p className="text-muted-foreground text-sm mt-1">{cutoffMessage}</p>
+    <div className="space-y-5 max-w-2xl mx-auto">
+      <div className="pt-1">
+        <h1 className="text-2xl font-bold">
+          Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, {profile.full_name?.split(" ")[0] || "there"}!
+        </h1>
+        <p className="text-muted-foreground text-sm mt-0.5">{cutoffMessage}</p>
       </div>
 
       <Tabs defaultValue={defaultTab} key={defaultTab} className="w-full">

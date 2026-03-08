@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Check, ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -15,28 +13,29 @@ interface UpcomingOrdersProps {
   orders: Order[];
 }
 
+const statusStyles: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground",
+  confirmed: "bg-primary/10 text-primary",
+  cancelled: "bg-muted text-muted-foreground",
+  delivered: "bg-primary/10 text-primary",
+  failed: "bg-destructive/10 text-destructive",
+  failed_reported: "bg-destructive/10 text-destructive",
+};
+
 export function UpcomingOrders({ orders }: UpcomingOrdersProps) {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [updatingOutcome, setUpdatingOutcome] = useState<string | null>(null);
   const supabase = createClient();
+  const today = new Date().toISOString().split("T")[0];
 
   async function handleCancel(orderId: string) {
     setCancelling(orderId);
     try {
-      const { data, error } = await supabase.rpc("cancel_order", {
-        p_order_id: orderId,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      const { data, error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
+      if (error) { toast.error(error.message); return; }
 
       const result = data as unknown as CancelOrderResult;
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
+      if (result.error) { toast.error(result.error); return; }
 
       toast.success(`Order cancelled. ${Number(result.refunded).toLocaleString()} UGX refunded.`);
       window.location.reload();
@@ -55,17 +54,10 @@ export function UpcomingOrders({ orders }: UpcomingOrdersProps) {
         p_outcome: outcome,
         p_note: null,
       });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      if (error) { toast.error(error.message); return; }
 
       const result = data as unknown as OrderOutcomeResult;
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
+      if (result.error) { toast.error(result.error); return; }
 
       toast.success(outcome === "delivered" ? "Marked as delivered" : "Marked as failed for admin review");
       window.location.reload();
@@ -76,109 +68,90 @@ export function UpcomingOrders({ orders }: UpcomingOrdersProps) {
     }
   }
 
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    cancelled: "bg-red-100 text-red-800",
-    delivered: "bg-green-100 text-green-800",
-    failed: "bg-red-100 text-red-800",
-    failed_reported: "bg-orange-100 text-orange-800",
-  };
-
-  const today = new Date().toISOString().split("T")[0];
-
   if (orders.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Upcoming Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No upcoming orders. Place one above!</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl border bg-muted/40 py-10 text-center text-sm text-muted-foreground">
+        No upcoming orders. Place one from the Order tab!
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Upcoming Orders</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {orders.map((order) => (
-          <div key={order.id} className="rounded-lg border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                {order.menu_item?.image_url ? (
-                  <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border">
-                    <Image src={order.menu_item.image_url} alt={order.menu_item.name ?? ""} fill className="object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
-                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                )}
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="font-medium text-sm">{order.menu_item?.name}</div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{format(new Date(order.order_date), "EEE, MMM d")}</span>
-                  <span>x{order.quantity}</span>
-                  <span>{Number(order.total_price).toLocaleString()} UGX</span>
+    <div className="space-y-3">
+      {orders.map((order) => (
+        <div key={order.id} className="rounded-2xl border bg-card p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            {/* Thumbnail */}
+            <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-muted border">
+              {order.menu_item?.image_url ? (
+                <Image src={order.menu_item.image_url} alt={order.menu_item.name ?? ""} fill className="object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
                 </div>
-                <Badge className={`text-xs ${statusColors[order.status] || ""}`} variant="secondary">
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm leading-tight">{order.menu_item?.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {format(new Date(order.order_date), "EEE, MMM d")} &middot; x{order.quantity} &middot; {Number(order.total_price).toLocaleString()} UGX
+              </p>
+              <div className="mt-1.5">
+                <Badge variant="secondary" className={`text-xs ${statusStyles[order.status] || ""}`}>
                   {order.status}
                 </Badge>
               </div>
-              </div>
-              {order.status === "pending" && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCancel(order.id)}
-                  disabled={cancelling === order.id}
-                >
-                  {cancelling === order.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4 text-destructive" />
-                  )}
-                </Button>
-              )}
             </div>
-            {order.order_date <= today && order.status !== "cancelled" && order.status !== "failed" && order.status !== "delivered" && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={Boolean(updatingOutcome)}
-                  onClick={() => reportOutcome(order.id, "delivered")}
-                >
-                  {updatingOutcome === order.id + "delivered" ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-1" />
-                  )}
-                  I received it
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  disabled={Boolean(updatingOutcome)}
-                  onClick={() => reportOutcome(order.id, "failed")}
-                >
-                  {updatingOutcome === order.id + "failed" ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                  )}
-                  Not delivered
-                </Button>
-              </div>
+
+            {/* Cancel */}
+            {order.status === "pending" && (
+              <button
+                onClick={() => handleCancel(order.id)}
+                disabled={cancelling === order.id}
+                className="h-8 w-8 rounded-full border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 active:scale-95 transition-all shrink-0"
+              >
+                {cancelling === order.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+              </button>
             )}
           </div>
-        ))}
-      </CardContent>
-    </Card>
+
+          {/* Outcome actions */}
+          {order.order_date <= today && order.status !== "cancelled" && order.status !== "failed" && order.status !== "delivered" && (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                disabled={Boolean(updatingOutcome)}
+                onClick={() => reportOutcome(order.id, "delivered")}
+                className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl border text-sm font-medium text-primary border-primary/30 bg-primary/8 active:scale-[0.98] transition-transform disabled:opacity-50"
+              >
+                {updatingOutcome === order.id + "delivered" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                I received it
+              </button>
+              <button
+                disabled={Boolean(updatingOutcome)}
+                onClick={() => reportOutcome(order.id, "failed")}
+                className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl border text-sm font-medium text-destructive border-destructive/20 bg-destructive/5 active:scale-[0.98] transition-transform disabled:opacity-50"
+              >
+                {updatingOutcome === order.id + "failed" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
+                Not delivered
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

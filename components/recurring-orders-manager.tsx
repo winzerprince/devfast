@@ -2,14 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarDays, Loader2, Plus, Repeat, Save, Trash2 } from "lucide-react";
+import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import type { MenuItem, RecurringOrder } from "@/lib/types";
 
 const DAY_OPTIONS = [
@@ -38,20 +35,11 @@ type DayPlan = Record<number, DayLine[]>;
 
 function createInitialDayPlan(orders: RecurringOrder[]): DayPlan {
   const plan: DayPlan = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
-
   for (const order of orders) {
     for (const day of order.days_of_week) {
-      plan[day] = [
-        ...plan[day],
-        {
-          id: crypto.randomUUID(),
-          menu_item_id: order.menu_item_id,
-          quantity: order.quantity,
-        },
-      ];
+      plan[day] = [...plan[day], { id: crypto.randomUUID(), menu_item_id: order.menu_item_id, quantity: order.quantity }];
     }
   }
-
   return plan;
 }
 
@@ -61,7 +49,6 @@ export function RecurringOrdersManager({ menuItems, recurringOrders, userId }: R
   const [quantity, setQuantity] = useState<number>(1);
   const [dayPlan, setDayPlan] = useState<DayPlan>(() => createInitialDayPlan(recurringOrders));
   const [saving, setSaving] = useState(false);
-
   const supabase = createClient();
 
   const activeLines = dayPlan[activeDay] || [];
@@ -72,83 +59,50 @@ export function RecurringOrdersManager({ menuItems, recurringOrders, userId }: R
   );
 
   function addToDay(day: number) {
-    if (!selectedItem) {
-      toast.error("Select a menu item first");
-      return;
-    }
-
-    if (quantity <= 0) {
-      toast.error("Quantity must be at least 1");
-      return;
-    }
+    if (!selectedItem) { toast.error("Select a menu item first"); return; }
+    if (quantity <= 0) { toast.error("Quantity must be at least 1"); return; }
 
     setDayPlan((prev) => ({
       ...prev,
-      [day]: [
-        ...(prev[day] || []),
-        {
-          id: crypto.randomUUID(),
-          menu_item_id: selectedItem,
-          quantity,
-        },
-      ],
+      [day]: [...(prev[day] || []), { id: crypto.randomUUID(), menu_item_id: selectedItem, quantity }],
     }));
-
     setSelectedItem("");
     setQuantity(1);
   }
 
   function removeFromDay(day: number, id: string) {
-    setDayPlan((prev) => ({
-      ...prev,
-      [day]: (prev[day] || []).filter((line) => line.id !== id),
-    }));
+    setDayPlan((prev) => ({ ...prev, [day]: (prev[day] || []).filter((l) => l.id !== id) }));
   }
 
   function updateDayLineQty(day: number, id: string, nextQty: number) {
     setDayPlan((prev) => ({
       ...prev,
-      [day]: (prev[day] || []).map((line) =>
-        line.id === id ? { ...line, quantity: Math.max(1, nextQty) } : line
-      ),
+      [day]: (prev[day] || []).map((l) => (l.id === id ? { ...l, quantity: Math.max(1, nextQty) } : l)),
     }));
   }
 
   function applyTemplate(template: "daily" | "weekdays") {
     const source = dayPlan[activeDay] || [];
-    if (source.length === 0) {
-      toast.error("Add at least one item to the active day first");
-      return;
-    }
+    if (source.length === 0) { toast.error("Add at least one item to the active day first"); return; }
 
     const targetDays = template === "daily" ? [1, 2, 3, 4, 5, 6, 7] : [1, 2, 3, 4, 5];
-    const cloned = source.map((line) => ({ ...line, id: crypto.randomUUID() }));
-
     setDayPlan((prev) => {
       const next = { ...prev };
       for (const day of targetDays) {
-        next[day] = cloned.map((line) => ({ ...line, id: crypto.randomUUID() }));
+        next[day] = source.map((l) => ({ ...l, id: crypto.randomUUID() }));
       }
       return next;
     });
-
     toast.success(template === "daily" ? "Applied to all 7 days" : "Applied to weekdays");
   }
 
   async function saveWeeklyPlan() {
     setSaving(true);
     try {
-      const existingIds = recurringOrders.map((order) => order.id);
+      const existingIds = recurringOrders.map((o) => o.id);
       if (existingIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from("recurring_orders")
-          .delete()
-          .in("id", existingIds);
-
-        if (deleteError) {
-          toast.error(deleteError.message);
-          return;
-        }
+        const { error } = await supabase.from("recurring_orders").delete().in("id", existingIds);
+        if (error) { toast.error(error.message); return; }
       }
 
       const payload = Object.entries(dayPlan).flatMap(([day, lines]) =>
@@ -163,12 +117,8 @@ export function RecurringOrdersManager({ menuItems, recurringOrders, userId }: R
       );
 
       if (payload.length > 0) {
-        const { error: insertError } = await supabase.from("recurring_orders").insert(payload);
-
-        if (insertError) {
-          toast.error(insertError.message);
-          return;
-        }
+        const { error } = await supabase.from("recurring_orders").insert(payload);
+        if (error) { toast.error(error.message); return; }
       }
 
       toast.success(payload.length > 0 ? "Weekly recurring plan saved" : "Recurring plan cleared");
@@ -181,141 +131,169 @@ export function RecurringOrdersManager({ menuItems, recurringOrders, userId }: R
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Repeat className="h-5 w-5" />
-          Weekly Recurring Plan
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-xs text-muted-foreground">
-          Build your weekly plan day by day. You can add multiple menu items for each weekday.
-        </p>
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Build your weekly breakfast plan. Add items to each day and save.
+      </p>
 
-        <div className="flex flex-wrap gap-2">
-          {DAY_OPTIONS.map((day) => {
-            const count = dayPlan[day.value]?.length || 0;
-            return (
-              <Button
-                key={day.value}
-                type="button"
-                variant={activeDay === day.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveDay(day.value)}
-              >
-                {day.label}
-                {count > 0 ? <Badge variant="secondary" className="ml-2">{count}</Badge> : null}
-              </Button>
-            );
-          })}
+      {/* Day selector */}
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {DAY_OPTIONS.map((day) => {
+          const count = dayPlan[day.value]?.length || 0;
+          const active = activeDay === day.value;
+          return (
+            <button
+              key={day.value}
+              onClick={() => setActiveDay(day.value)}
+              className={`flex flex-col items-center gap-0.5 px-3.5 py-2 rounded-2xl border text-sm font-medium shrink-0 transition-colors active:scale-95 ${
+                active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground"
+              }`}
+            >
+              <span>{day.label}</span>
+              {count > 0 && (
+                <span className={`text-[10px] font-bold ${active ? "text-primary-foreground/70" : "text-primary"}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active day editor */}
+      <div className="rounded-2xl border bg-card p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-sm font-semibold">
+            {DAY_OPTIONS.find((d) => d.value === activeDay)?.label} items
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => applyTemplate("weekdays")}
+              className="text-xs font-medium px-3 py-1.5 rounded-full border bg-background active:scale-95 transition-transform"
+            >
+              Copy to weekdays
+            </button>
+            <button
+              onClick={() => applyTemplate("daily")}
+              className="text-xs font-medium px-3 py-1.5 rounded-full border bg-background active:scale-95 transition-transform"
+            >
+              Copy to all days
+            </button>
+          </div>
         </div>
 
-        <div className="grid gap-3 border rounded-lg p-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold">
-              {DAY_OPTIONS.find((d) => d.value === activeDay)?.label} items
-            </h4>
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => applyTemplate("weekdays")}>
-                Copy to weekdays
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => applyTemplate("daily")}>
-                Copy to all days
-              </Button>
-            </div>
-          </div>
+        {/* Add item row */}
+        <div className="space-y-2">
+          <Select value={selectedItem} onValueChange={setSelectedItem}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select menu item…" />
+            </SelectTrigger>
+            <SelectContent>
+              {menuItems.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name} — {Number(item.price).toLocaleString()} UGX
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="space-y-2">
-            <Label>Menu Item</Label>
-            <Select value={selectedItem} onValueChange={setSelectedItem}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select item" />
-              </SelectTrigger>
-              <SelectContent>
-                {menuItems.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name} — {Number(item.price).toLocaleString()} UGX
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end gap-2">
-            <div className="space-y-2 w-24">
-              <Label>Qty</Label>
-              <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
-            </div>
-            <Button type="button" onClick={() => addToDay(activeDay)}>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+              className="w-20 h-10"
+              placeholder="Qty"
+            />
+            <Button
+              type="button"
+              onClick={() => addToDay(activeDay)}
+              disabled={!selectedItem}
+              className="flex-1 min-h-[40px] active:scale-[0.98] transition-transform"
+            >
               <Plus className="h-4 w-4 mr-1" />
               Add to {DAY_OPTIONS.find((d) => d.value === activeDay)?.label}
             </Button>
           </div>
+        </div>
 
-          {activeLines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No items for this day yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {activeLines.map((line) => {
-                const menuItem = menuItems.find((m) => m.id === line.menu_item_id);
-                return (
-                  <div key={line.id} className="flex items-center gap-2 border rounded-md p-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{menuItem?.name || "Unknown item"}</p>
-                      <p className="text-xs text-muted-foreground">{Number(menuItem?.price || 0).toLocaleString()} UGX each</p>
-                    </div>
-                    <Input
-                      type="number"
-                      min={1}
-                      className="w-16 h-8"
-                      value={line.quantity}
-                      onChange={(e) => updateDayLineQty(activeDay, line.id, Number(e.target.value) || 1)}
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFromDay(activeDay, line.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+        {/* Lines for active day */}
+        {activeLines.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-2">No items for this day yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {activeLines.map((line) => {
+              const menuItem = menuItems.find((m) => m.id === line.menu_item_id);
+              return (
+                <div key={line.id} className="flex items-center gap-2 rounded-xl border bg-muted/30 p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{menuItem?.name || "Unknown item"}</p>
+                    <p className="text-xs text-muted-foreground">{Number(menuItem?.price || 0).toLocaleString()} UGX each</p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="pt-3 border-t space-y-3">
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Weekly summary
-          </h4>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {DAY_OPTIONS.map((day) => (
-              <div key={day.value} className="rounded-md border p-2 text-sm flex items-center justify-between">
-                <span>{day.label}</span>
-                <Badge variant="secondary">{dayPlan[day.value]?.length || 0}</Badge>
-              </div>
-            ))}
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-16 h-8 text-center"
+                    value={line.quantity}
+                    onChange={(e) => updateDayLineQty(activeDay, line.id, Number(e.target.value) || 1)}
+                  />
+                  <button
+                    onClick={() => removeFromDay(activeDay, line.id)}
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive active:scale-95 transition-all shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
+        )}
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setDayPlan({ 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] });
-                toast.success("Planner cleared. Click save to apply.");
-              }}
-              disabled={saving || totalWeeklyLines === 0}
-            >
-              Clear planner
-            </Button>
-            <Button onClick={saveWeeklyPlan} disabled={saving} className="w-full">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Weekly Plan
-            </Button>
-          </div>
+      {/* Weekly summary */}
+      <div className="rounded-2xl border bg-card p-4 space-y-3">
+        <p className="text-sm font-semibold">Weekly summary</p>
+        <div className="grid grid-cols-7 gap-1.5">
+          {DAY_OPTIONS.map((day) => {
+            const count = dayPlan[day.value]?.length || 0;
+            return (
+              <button
+                key={day.value}
+                onClick={() => setActiveDay(day.value)}
+                className={`flex flex-col items-center py-2 rounded-xl border text-xs transition-colors active:scale-95 ${
+                  activeDay === day.value ? "border-primary bg-primary/5" : "bg-muted/30"
+                }`}
+              >
+                <span className="font-medium">{day.label}</span>
+                <span className={`font-bold mt-0.5 ${count > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Actions */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          onClick={() => { setDayPlan({ 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] }); toast.success("Planner cleared. Click save to apply."); }}
+          disabled={saving || totalWeeklyLines === 0}
+          className="min-h-[48px] active:scale-[0.97] transition-transform"
+        >
+          Clear plan
+        </Button>
+        <Button
+          onClick={saveWeeklyPlan}
+          disabled={saving}
+          className="min-h-[48px] active:scale-[0.97] transition-transform"
+        >
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save plan
+        </Button>
+      </div>
+    </div>
   );
 }

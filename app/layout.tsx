@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   description: "Breakfast order & subscription management for your team",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "DevFast",
   },
   icons: {
