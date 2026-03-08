@@ -3,18 +3,15 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Loader2, Plus, ShoppingCart, Sparkles, Trash2, ImageIcon } from "lucide-react";
+import { Loader2, Minus, Plus, Sparkles, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import type { DrainMode, MenuItem, PaymentMethod, PlaceOrderResult } from "@/lib/types";
 
 interface OrderFormProps {
   menuItems: MenuItem[];
-  availableItemIds: string[] | null; // null = no availability set, show all
+  availableItemIds: string[] | null;
   balance: number;
   drainMode: DrainMode;
   orderDateLabel: string;
@@ -22,114 +19,63 @@ interface OrderFormProps {
   cutoffMessage: string;
 }
 
-interface OrderLine {
-  id: string;
-  menu_item_id: string;
-  quantity: number;
-}
-
 export function OrderForm({ menuItems, availableItemIds, balance, drainMode, orderDateLabel, canOrder, cutoffMessage }: OrderFormProps) {
-  const [selectedItem, setSelectedItem] = useState<string>("");
-  const [quantity, setQuantity] = useState(1);
-  const [lines, setLines] = useState<OrderLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("prepaid");
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
-  // Filter items by availability
   const displayItems = availableItemIds
     ? menuItems.filter((item) => availableItemIds.includes(item.id))
     : menuItems;
 
-  const item = displayItems.find((m) => m.id === selectedItem);
-  const previewTotal = item ? item.price * quantity : 0;
+  function increment(id: string) {
+    if (!canOrder) return;
+    setQuantities((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  }
 
-  const orderTotal = lines.reduce((sum, line) => {
-    const menuItem = menuItems.find((m) => m.id === line.menu_item_id);
-    if (!menuItem) return sum;
-    return sum + menuItem.price * line.quantity;
+  function decrement(id: string) {
+    setQuantities((prev) => {
+      const next = { ...prev };
+      if ((next[id] || 0) <= 1) delete next[id];
+      else next[id]--;
+      return next;
+    });
+  }
+
+  const orderLines = Object.entries(quantities)
+    .filter(([, qty]) => qty > 0)
+    .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity }));
+
+  const orderTotal = orderLines.reduce((sum, line) => {
+    const item = menuItems.find((m) => m.id === line.menu_item_id);
+    return sum + (item ? item.price * line.quantity : 0);
   }, 0);
 
-  const canAfford = paymentMethod === "pay_on_delivery"
-    ? orderTotal > 0
-    : drainMode === "confirmation"
-      ? orderTotal > 0
-      : balance >= orderTotal && orderTotal > 0;
-
-  function addLine() {
-    if (!selectedItem) {
-      toast.error("Select an item first");
-      return;
-    }
-
-    if (quantity <= 0) {
-      toast.error("Quantity must be at least 1");
-      return;
-    }
-
-    const existing = lines.find((line) => line.menu_item_id === selectedItem);
-    if (existing) {
-      setLines((prev) =>
-        prev.map((line) =>
-          line.menu_item_id === selectedItem
-            ? { ...line, quantity: line.quantity + quantity }
-            : line
-        )
-      );
-    } else {
-      setLines((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          menu_item_id: selectedItem,
-          quantity,
-        },
-      ]);
-    }
-
-    setSelectedItem("");
-    setQuantity(1);
-  }
-
-  function removeLine(id: string) {
-    setLines((prev) => prev.filter((line) => line.id !== id));
-  }
-
-  function updateLineQuantity(id: string, nextQty: number) {
-    setLines((prev) =>
-      prev.map((line) => (line.id === id ? { ...line, quantity: Math.max(1, nextQty) } : line))
-    );
-  }
+  const canAfford =
+    paymentMethod === "pay_on_delivery"
+      ? orderLines.length > 0
+      : drainMode === "confirmation"
+        ? orderLines.length > 0
+        : balance >= orderTotal && orderLines.length > 0;
 
   async function handlePlaceOrder() {
-    if (lines.length === 0 || !canOrder) return;
+    if (orderLines.length === 0 || !canOrder) return;
     setLoading(true);
-
     try {
-      const payload = lines.map((line) => ({
-        menu_item_id: line.menu_item_id,
-        quantity: line.quantity,
-      }));
-
       const { data, error } = await supabase.rpc("place_multi_order", {
-        p_items: payload,
+        p_items: orderLines,
         p_payment_method: paymentMethod,
       });
 
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      if (error) { toast.error(error.message); return; }
 
       const result = data as unknown as PlaceOrderResult;
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
+      if (result.error) { toast.error(result.error); return; }
 
-      const methodLabel = paymentMethod === "pay_on_delivery" ? " (pay on delivery)" : "";
-      toast.success(`Order placed! ${lines.length} item type(s), total ${Number(result.total).toLocaleString()} UGX${methodLabel}`);
-      setLines([]);
+      const methodLabel = paymentMethod === "pay_on_delivery" ? " · Pay on delivery" : "";
+      toast.success(`Order placed! ${Number(result.total).toLocaleString()} UGX${methodLabel}`);
+      setQuantities({});
       window.location.reload();
     } catch {
       toast.error("Failed to place order");
@@ -139,212 +85,159 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <ShoppingCart className="h-5 w-5" />
-          Place Order for {orderDateLabel}
-        </CardTitle>
+    <div className="space-y-4">
+      {/* Date info bar */}
+      <div className="rounded-2xl bg-primary/8 border border-primary/20 px-4 py-3">
+        <p className="text-sm font-semibold">Ordering for {orderDateLabel}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{cutoffMessage}</p>
+      </div>
+
+      {/* Payment method — segmented control */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payment</p>
+        <div className="flex rounded-xl border overflow-hidden">
+          <button
+            onClick={() => setPaymentMethod("prepaid")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors active:opacity-80 ${
+              paymentMethod === "prepaid"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-muted-foreground"
+            }`}
+          >
+            From Balance
+          </button>
+          <button
+            onClick={() => setPaymentMethod("pay_on_delivery")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors border-l active:opacity-80 ${
+              paymentMethod === "pay_on_delivery"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-muted-foreground"
+            }`}
+          >
+            On Delivery
+          </button>
+        </div>
         <p className="text-xs text-muted-foreground">
           {paymentMethod === "pay_on_delivery"
-            ? "Pay on delivery: you will pay when you receive your order."
+            ? "You pay when you receive your order."
             : drainMode === "automatic"
-              ? "Automatic drain: balance is charged immediately when order is placed."
-              : "Confirmation drain: balance is charged only after both you and admin confirm delivery."}
+              ? "Balance charged immediately when order is placed."
+              : "Balance charged after delivery is confirmed."}
         </p>
-        {!canOrder && (
-          <p className="text-sm text-destructive">{cutoffMessage}</p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Payment method selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Payment Method</label>
-          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="prepaid">Pay from Balance</SelectItem>
-              <SelectItem value="pay_on_delivery">Pay on Delivery</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      </div>
 
-        {/* Menu item selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Select Item</label>
-          {availableItemIds && displayItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No items available for this date.</p>
-          ) : (
-            <Select value={selectedItem} onValueChange={setSelectedItem} disabled={!canOrder || loading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a breakfast item..." />
-              </SelectTrigger>
-              <SelectContent>
-                {displayItems.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    <span className="flex items-center gap-2">
-                      {item.is_special && <Sparkles className="h-3 w-3 text-orange-500" />}
-                      {item.name} — {Number(item.price).toLocaleString()} UGX
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+      {/* Item picker */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {availableItemIds ? "Available Today" : "Menu"}
+        </p>
 
-        {/* Quantity */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Quantity for selected item</label>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              disabled={quantity <= 1 || !canOrder || loading}
-            >
-              -
-            </Button>
-            <span className="w-12 text-center font-medium">{quantity}</span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setQuantity(quantity + 1)}
-              disabled={!canOrder || loading}
-            >
-              +
-            </Button>
-            <Button
-              type="button"
-              onClick={addLine}
-              disabled={!selectedItem || !canOrder || loading}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add item
-            </Button>
+        {availableItemIds && displayItems.length === 0 ? (
+          <div className="rounded-2xl border bg-muted/40 py-8 text-center text-sm text-muted-foreground">
+            No items available for this date.
           </div>
-        </div>
-
-        {/* Total & Submit */}
-        {item && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-            <span className="text-sm font-medium">Preview line total</span>
-            <span className="text-lg font-bold">{previewTotal.toLocaleString()} UGX</span>
-          </div>
-        )}
-
-        {lines.length > 0 && (
-          <div className="space-y-2 border rounded-lg p-3">
-            <h4 className="text-sm font-medium">Your order items</h4>
-            {lines.map((line) => {
-              const lineItem = menuItems.find((m) => m.id === line.menu_item_id);
-              if (!lineItem) return null;
-              const lineTotal = lineItem.price * line.quantity;
+        ) : (
+          <div className="space-y-2">
+            {displayItems.map((item) => {
+              const qty = quantities[item.id] || 0;
               return (
-                <div key={line.id} className="flex items-center justify-between gap-2">
-                  <div className="text-sm min-w-0 flex-1">
-                    <p className="font-medium truncate">{lineItem.name}</p>
-                    <p className="text-xs text-muted-foreground">{Number(lineItem.price).toLocaleString()} UGX each</p>
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 rounded-2xl border p-3 transition-colors ${
+                    qty > 0 ? "border-primary/40 bg-primary/5" : "bg-card"
+                  }`}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-muted">
+                    {item.image_url ? (
+                      <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateLineQuantity(line.id, line.quantity - 1)}
-                      disabled={line.quantity <= 1 || loading}
-                    >
-                      -
-                    </Button>
-                    <Input
-                      className="w-14 h-9 text-center"
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(e) => updateLineQuantity(line.id, Number(e.target.value) || 1)}
-                      disabled={loading}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => updateLineQuantity(line.id, line.quantity + 1)}
-                      disabled={loading}
-                    >
-                      +
-                    </Button>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium text-sm leading-tight">{item.name}</span>
+                      {item.is_special && (
+                        <Badge variant="secondary" className="text-xs bg-primary/10 text-primary gap-1 py-0">
+                          <Sparkles className="h-2.5 w-2.5" /> Special
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold mt-0.5">
+                      {Number(item.price).toLocaleString()}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">UGX</span>
+                    </p>
                   </div>
-                  <div className="text-sm font-medium w-24 text-right">{lineTotal.toLocaleString()} UGX</div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeLine(line.id)}
-                    disabled={loading}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+
+                  {/* Stepper */}
+                  {qty === 0 ? (
+                    <button
+                      onClick={() => increment(item.id)}
+                      disabled={!canOrder || loading}
+                      className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => decrement(item.id)}
+                        disabled={loading}
+                        className="h-8 w-8 rounded-full border flex items-center justify-center active:scale-95 transition-transform"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                      <button
+                        onClick={() => increment(item.id)}
+                        disabled={loading}
+                        className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
+      </div>
 
-        {lines.length > 0 && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-            <span className="text-sm font-medium">Order Total</span>
-            <span className="text-lg font-bold">{orderTotal.toLocaleString()} UGX</span>
+      {/* Order summary + place button */}
+      {orderLines.length > 0 && (
+        <div className="rounded-2xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {orderLines.length} item type{orderLines.length > 1 ? "s" : ""}
+            </span>
+            <span className="text-lg font-bold">
+              {orderTotal.toLocaleString()}{" "}
+              <span className="text-xs font-normal text-muted-foreground">UGX</span>
+            </span>
           </div>
-        )}
 
-        {lines.length > 0 && paymentMethod === "prepaid" && drainMode === "automatic" && !canAfford && (
-          <p className="text-sm text-destructive">
-            Insufficient balance. You need {orderTotal.toLocaleString()} UGX but have {Number(balance).toLocaleString()} UGX.
-          </p>
-        )}
+          {paymentMethod === "prepaid" && drainMode === "automatic" && !canAfford && (
+            <p className="text-xs text-destructive">
+              Insufficient balance — {Number(balance).toLocaleString()} UGX available
+            </p>
+          )}
 
-        <Button
-          onClick={handlePlaceOrder}
-          className="w-full"
-          disabled={lines.length === 0 || !canAfford || !canOrder || loading}
-        >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {paymentMethod === "pay_on_delivery" ? "Place Order (Pay on Delivery)" : "Place Order"}
-        </Button>
-
-        {/* Menu preview */}
-        <div className="space-y-2 pt-4 border-t">
-          <h4 className="text-sm font-medium text-muted-foreground">
-            {availableItemIds ? "Available Items" : "Today\u0027s Menu"}
-          </h4>
-          <div className="grid gap-2">
-            {displayItems.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 p-2 rounded-md text-sm ${
-                  item.is_special ? "bg-orange-50 border border-orange-200" : "bg-muted/50"
-                }`}
-              >
-                {item.image_url ? (
-                  <div className="relative w-10 h-10 rounded overflow-hidden shrink-0">
-                    <Image src={item.image_url} alt={item.name} fill className="object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex items-center justify-between flex-1">
-                  <div className="flex items-center gap-2">
-                    {item.is_special && <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">Special</Badge>}
-                    <span className="font-medium">{item.name}</span>
-                  </div>
-                  <span className="text-muted-foreground">{Number(item.price).toLocaleString()} UGX</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Button
+            onClick={handlePlaceOrder}
+            className="w-full min-h-[48px] active:scale-[0.98] transition-transform"
+            disabled={!canAfford || !canOrder || loading}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {paymentMethod === "pay_on_delivery" ? "Place Order · Pay on Delivery" : "Place Order"}
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }

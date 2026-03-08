@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { MenuManager } from "@/components/menu-manager";
 import { MenuAvailabilityManager } from "@/components/menu-availability-manager";
-import { UtensilsCrossed } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { MenuItem } from "@/lib/types";
 
 export default async function AdminMenuPage() {
@@ -15,18 +15,23 @@ export default async function AdminMenuPage() {
   const items = (menuItems || []) as MenuItem[];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <UtensilsCrossed className="h-6 w-6" />
-          Menu Management
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">Add, edit, or disable breakfast items and set daily availability</p>
-      </div>
+    <div className="space-y-4">
+      <Tabs defaultValue="items" className="w-full">
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="grid w-full grid-cols-2 min-w-[280px]">
+            <TabsTrigger value="items">Menu Items</TabsTrigger>
+            <TabsTrigger value="availability">Daily Availability</TabsTrigger>
+          </TabsList>
+        </div>
 
-      <MenuAvailabilityManager menuItems={items} />
+        <TabsContent value="items" className="mt-4">
+          <MenuManager initialItems={items} />
+        </TabsContent>
 
-      <MenuManager initialItems={items} />
+        <TabsContent value="availability" className="mt-4">
+          <MenuAvailabilityManager menuItems={items} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

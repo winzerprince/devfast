@@ -73,7 +73,7 @@ export function BottomNav({ role }: BottomNavProps) {
               href={item.href}
               className={`flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
                 active
-                  ? "text-orange-500"
+                  ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

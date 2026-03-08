@@ -5,10 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Sparkles, Pencil, ImageIcon, X } from "lucide-react";
+import { Loader2, Plus, Sparkles, Pencil, ImageIcon, X, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import type { MenuItem } from "@/lib/types";
@@ -23,7 +22,6 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const supabase = createClient();
 
-  // Form state
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
@@ -31,6 +29,8 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteBlockedId, setDeleteBlockedId] = useState<string | null>(null);
 
   function resetForm() {
     setName("");
@@ -151,54 +151,83 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
     }
   }
 
-  async function toggleActive(item: MenuItem) {
+  async function deleteItem(item: MenuItem) {
     const { error } = await supabase
       .from("menu_items")
-      .update({ is_active: !item.is_active })
+      .delete()
       .eq("id", item.id);
 
     if (error) {
-      toast.error(error.message);
+      if (error.code === "23503") {
+        setDeleteBlockedId(item.id);
+      } else {
+        toast.error(error.message);
+      }
+      setConfirmDeleteId(null);
       return;
     }
 
-    toast.success(`"${item.name}" ${item.is_active ? "disabled" : "enabled"}`);
-    setItems(items.map((i) => (i.id === item.id ? { ...i, is_active: !i.is_active } : i)));
+    toast.success(`"${item.name}" deleted`);
+    setItems(items.filter((i) => i.id !== item.id));
+    setConfirmDeleteId(null);
   }
+
 
   const imageField = (
     <div className="space-y-2">
       <label className="text-sm font-medium">Image</label>
       {imagePreview && (
-        <div className="relative w-full h-32 rounded-lg overflow-hidden border">
+        <div className="relative w-full h-36 rounded-xl overflow-hidden border">
           <Image src={imagePreview} alt="Preview" fill className="object-cover" />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute top-1 right-1 h-6 w-6 bg-background/80"
+            className="absolute top-1 right-1 h-6 w-6 bg-background/80 rounded-full"
             onClick={() => { setImageFile(null); setImagePreview(null); }}
           >
             <X className="h-3 w-3" />
           </Button>
         </div>
       )}
-      <Input
-        type="file"
-        accept="image/*"
-        onChange={handleImageChange}
-        className="text-sm"
-      />
+      <Input type="file" accept="image/*" onChange={handleImageChange} className="text-sm" />
     </div>
+  );
+
+  const itemForm = (onSubmit: (e: React.FormEvent) => void, submitLabel: string) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Name</label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Chapati + Beans" required />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Price (UGX)</label>
+        <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 5000" min={1} required />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Description</label>
+        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description" rows={2} />
+      </div>
+      {imageField}
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={isSpecial} onChange={(e) => setIsSpecial(e.target.checked)} className="rounded" />
+        Mark as special
+      </label>
+      <Button type="submit" className="w-full min-h-[48px]" disabled={loading}>
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {submitLabel}
+      </Button>
+    </form>
   );
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{items.length} items</h2>
+        <span className="text-sm text-muted-foreground">{items.length} items</span>
         <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm">
+            <Button size="sm" className="active:scale-[0.97] transition-transform">
               <Plus className="h-4 w-4 mr-1" /> Add Item
             </Button>
           </DialogTrigger>
@@ -206,29 +235,7 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
             <DialogHeader>
               <DialogTitle>Add Menu Item</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Name</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Chapati + Beans" required />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Price (UGX)</label>
-                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 5000" min={1} required />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description" rows={2} />
-              </div>
-              {imageField}
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={isSpecial} onChange={(e) => setIsSpecial(e.target.checked)} className="rounded" />
-                Mark as special
-              </label>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Item
-              </Button>
-            </form>
+            {itemForm(handleAdd, "Add Item")}
           </DialogContent>
         </Dialog>
       </div>
@@ -239,76 +246,102 @@ export function MenuManager({ initialItems }: MenuManagerProps) {
           <DialogHeader>
             <DialogTitle>Edit Menu Item</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Price (UGX)</label>
-              <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} min={1} required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-            </div>
-            {imageField}
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={isSpecial} onChange={(e) => setIsSpecial(e.target.checked)} className="rounded" />
-              Mark as special
-            </label>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </form>
+          {itemForm(handleUpdate, "Save Changes")}
         </DialogContent>
       </Dialog>
 
-      {/* Items List */}
-      <div className="space-y-3">
+      {/* Food-app style grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {items.map((item) => (
-          <Card key={item.id} className={!item.is_active ? "opacity-50" : ""}>
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                {item.image_url ? (
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 border">
-                    <Image src={item.image_url} alt={item.name} fill className="object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {item.is_special && <Sparkles className="h-4 w-4 text-orange-500" />}
-                        <span className="font-medium">{item.name}</span>
-                        {!item.is_active && <Badge variant="secondary" className="text-xs">Disabled</Badge>}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{item.description}</div>
-                      <div className="text-sm font-medium">{Number(item.price).toLocaleString()} UGX</div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleActive(item)}
-                        className={item.is_active ? "text-destructive" : "text-green-600"}
-                      >
-                        {item.is_active ? "Disable" : "Enable"}
-                      </Button>
-                    </div>
-                  </div>
+          <div
+            key={item.id}
+            className="rounded-2xl border bg-card overflow-hidden flex flex-col"
+          >
+            {/* Image area */}
+            <div className="relative w-full h-44 bg-muted shrink-0">
+              {item.image_url ? (
+                <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
                 </div>
+              )}
+
+              {/* Overlaid badges — top left */}
+              <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                {item.is_special && (
+                  <Badge className="bg-primary text-primary-foreground gap-1 shadow-sm text-xs">
+                    <Sparkles className="h-3 w-3" /> Special
+                  </Badge>
+                )}
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Edit button — top right */}
+              <button
+                onClick={() => openEdit(item)}
+                className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm rounded-full p-2 shadow-sm active:scale-95 transition-transform"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Content area */}
+            <div className="p-4 flex flex-col gap-3 flex-1">
+              <div className="flex-1">
+                <h3 className="font-semibold leading-tight">{item.name}</h3>
+                {item.description && (
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+
+              {deleteBlockedId === item.id ? (
+                <div className="flex items-start gap-2 rounded-xl bg-destructive/8 border border-destructive/20 px-3 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-destructive leading-snug">This item has existing orders and can't be removed.</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteBlockedId(null)}
+                    className="shrink-0 text-destructive/60 hover:text-destructive active:scale-95 transition-all"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-lg font-bold shrink-0">
+                    {Number(item.price).toLocaleString()}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">UGX</span>
+                  </span>
+                  {confirmDeleteId === item.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => deleteItem(item)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full border border-destructive/40 bg-destructive/10 text-destructive active:scale-95 transition-transform"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-background active:scale-95 transition-transform"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(item.id)}
+                      className="p-2 rounded-full border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 active:scale-95 transition-all"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         ))}
       </div>
     </div>

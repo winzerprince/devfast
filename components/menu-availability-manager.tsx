@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import type { MenuItem, MenuAvailability } from "@/lib/types";
@@ -64,13 +63,11 @@ export function MenuAvailabilityManager({ menuItems }: MenuAvailabilityManagerPr
   async function saveAvailability() {
     setLoading(true);
     try {
-      // Delete existing availability for this date
       await supabase
         .from("menu_availability")
         .delete()
         .eq("available_date", selectedDate);
 
-      // Insert new rows
       if (checkedIds.size > 0) {
         const rows = Array.from(checkedIds).map((menu_item_id) => ({
           menu_item_id,
@@ -101,78 +98,103 @@ export function MenuAvailabilityManager({ menuItems }: MenuAvailabilityManagerPr
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <CalendarCheck className="h-5 w-5" />
-          Daily Availability
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Check which items are available for a specific date. If none are set, all active items will be shown to users.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Date selector */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => shiftDate(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="text-center flex-1">
-            <div className="font-medium">
-              {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
-            </div>
-          </div>
-          <Button variant="outline" size="icon" onClick={() => shiftDate(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+    <div className="space-y-5">
+      {/* Date navigator */}
+      <div className="flex items-center gap-3 bg-muted/50 rounded-2xl p-3">
+        <button
+          onClick={() => shiftDate(-1)}
+          className="h-9 w-9 flex items-center justify-center rounded-xl border bg-background active:scale-95 transition-transform shrink-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex-1 text-center">
+          <p className="font-semibold text-sm">
+            {format(new Date(selectedDate + "T00:00:00"), "EEEE")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(selectedDate + "T00:00:00"), "MMM d, yyyy")}
+          </p>
         </div>
+        <button
+          onClick={() => shiftDate(1)}
+          className="h-9 w-9 flex items-center justify-center rounded-xl border bg-background active:scale-95 transition-transform shrink-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
 
-        {fetching ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-5 w-5 animate-spin" />
+      <p className="text-xs text-muted-foreground">
+        Items checked here will be shown to users for this date. If none are set, all active items are shown.
+      </p>
+
+      {fetching ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Select all / deselect all */}
+          <div className="flex gap-2">
+            <button
+              onClick={selectAll}
+              className="text-xs font-medium px-3 py-1.5 rounded-full border bg-background active:scale-95 transition-transform"
+            >
+              Select All
+            </button>
+            <button
+              onClick={deselectAll}
+              className="text-xs font-medium px-3 py-1.5 rounded-full border bg-background active:scale-95 transition-transform"
+            >
+              Deselect All
+            </button>
           </div>
-        ) : (
-          <>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={selectAll}>Select All</Button>
-              <Button variant="outline" size="sm" onClick={deselectAll}>Deselect All</Button>
-            </div>
 
-            <div className="space-y-2">
-              {activeItems.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex items-center gap-3 p-2 rounded-md border cursor-pointer hover:bg-muted/50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checkedIds.has(item.id)}
-                    onChange={() => toggleItem(item.id)}
-                    className="rounded"
-                  />
-                  <div className="flex-1 min-w-0">
+          {/* Item toggles */}
+          <div className="space-y-2">
+            {activeItems.map((item) => (
+              <label
+                key={item.id}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-colors active:scale-[0.99] ${
+                  checkedIds.has(item.id)
+                    ? "border-primary/40 bg-primary/5"
+                    : "bg-card"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checkedIds.has(item.id)}
+                  onChange={() => toggleItem(item.id)}
+                  className="rounded accent-[hsl(var(--primary))] h-4 w-4 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{item.name}</span>
                     {item.is_special && (
-                      <Badge variant="secondary" className="ml-2 text-xs bg-orange-100 text-orange-700">Special</Badge>
+                      <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">Special</Badge>
                     )}
                   </div>
-                  <span className="text-sm text-muted-foreground">{Number(item.price).toLocaleString()} UGX</span>
-                </label>
-              ))}
-            </div>
+                </div>
+                <span className="text-sm font-semibold shrink-0">{Number(item.price).toLocaleString()} <span className="font-normal text-muted-foreground text-xs">UGX</span></span>
+              </label>
+            ))}
+          </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {checkedIds.size} of {activeItems.length} items selected
-              </span>
-              <Button onClick={saveAvailability} disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Availability
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-sm text-muted-foreground">
+              {checkedIds.size} of {activeItems.length} selected
+            </span>
+            <Button
+              onClick={saveAvailability}
+              disabled={loading}
+              className="active:scale-[0.97] transition-transform"
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
