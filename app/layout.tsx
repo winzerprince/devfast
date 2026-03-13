@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -32,11 +33,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon-180x180.png", sizes: "180x180", type: "image/png" },
     ],
   },
   formatDetection: {
@@ -55,6 +57,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
         suppressHydrationWarning
       >
+        <div id="splash" aria-hidden="true">
+          <div id="splash-logo">
+            <Image src="/logo.png" alt="" width={72} height={72} priority />
+          </div>
+          <p id="splash-text">EarlyBird</p>
+        </div>
         {children}
         <Toaster position="top-center" richColors />
       </body>
