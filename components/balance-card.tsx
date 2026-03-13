@@ -1,5 +1,5 @@
 import { AlertTriangle, Coffee, Wallet } from "lucide-react";
-import { LOW_BALANCE_THRESHOLD } from "@/lib/types";
+import { DEBT_BLOCK_THRESHOLD, LOW_BALANCE_THRESHOLD } from "@/lib/types";
 
 interface BalanceCardProps {
   balance: number;
@@ -9,13 +9,15 @@ interface BalanceCardProps {
 
 export function BalanceCard({ balance, outstandingDebt = 0, cheapestItem }: BalanceCardProps) {
   const threshold = cheapestItem ? Math.max(cheapestItem, LOW_BALANCE_THRESHOLD) : LOW_BALANCE_THRESHOLD;
-  const isLow = balance < threshold;
+  const isLow = balance >= 0 && balance < threshold;
+  const isNegative = balance < 0;
+  const isDebtBlocked = balance < DEBT_BLOCK_THRESHOLD;
   const hasDebt = outstandingDebt > 0;
 
   return (
     <div className="space-y-2">
       {/* Wallet card */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-orange-600 p-5 text-white">
+      <div className={`rounded-2xl p-5 text-white ${isDebtBlocked ? "bg-gradient-to-br from-destructive to-red-700" : "bg-gradient-to-br from-primary to-orange-600"}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5 text-white/70 text-xs font-semibold uppercase tracking-widest">
             <Wallet className="h-3.5 w-3.5" />
@@ -29,8 +31,23 @@ export function BalanceCard({ balance, outstandingDebt = 0, cheapestItem }: Bala
         <div className="text-white/60 text-sm mt-1">UGX</div>
       </div>
 
-      {/* Warnings */}
-      {isLow && (
+      {/* Warnings — most severe first */}
+      {isDebtBlocked && (
+        <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Orders suspended. </span>
+            <span>Your debt exceeds {Math.abs(DEBT_BLOCK_THRESHOLD).toLocaleString()} UGX. Please settle with your admin to resume ordering.</span>
+          </div>
+        </div>
+      )}
+      {!isDebtBlocked && isNegative && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Negative balance — you owe {Math.abs(balance).toLocaleString()} UGX. Please top up soon.</span>
+        </div>
+      )}
+      {!isNegative && isLow && (
         <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2.5">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>Low balance — please top up with your admin</span>
@@ -39,7 +56,7 @@ export function BalanceCard({ balance, outstandingDebt = 0, cheapestItem }: Bala
       {hasDebt && (
         <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2.5">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Debt: {Number(outstandingDebt).toLocaleString()} UGX — please pay your admin</span>
+          <span>Outstanding debt: {Number(outstandingDebt).toLocaleString()} UGX — please pay your admin</span>
         </div>
       )}
     </div>

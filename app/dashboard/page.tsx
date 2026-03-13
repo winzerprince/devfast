@@ -8,6 +8,7 @@ import { RecurringOrdersManager } from "@/components/recurring-orders-manager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SpendingSummary } from "@/components/spending-summary";
 import type { MenuItem, Order, Profile, RecurringOrder } from "@/lib/types";
+import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 export default async function DashboardPage({
@@ -98,6 +99,7 @@ export default async function DashboardPage({
     : null;
 
   const cheapestItem = menuItems.length > 0 ? menuItems[0].price : undefined;
+  const isDebtBlocked = profile.balance < DEBT_BLOCK_THRESHOLD;
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
@@ -131,6 +133,7 @@ export default async function DashboardPage({
             orderDateLabel={orderDateLabel}
             canOrder={true}
             cutoffMessage={cutoffMessage}
+            isDebtBlocked={isDebtBlocked}
           />
         </TabsContent>
 

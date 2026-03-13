@@ -6,7 +6,7 @@ export type DrainMode = "automatic" | "confirmation";
 
 export type ChargeStatus = "charged" | "pending" | "refunded";
 
-export type PaymentMethod = "prepaid" | "pay_on_delivery";
+export type PaymentMethod = "prepaid" | "pay_on_delivery" | "pay_later";
 
 export type PaymentStatus = "paid" | "unpaid";
 
@@ -55,6 +55,7 @@ export interface Order {
   user_delivery_status: DeliveryUserStatus;
   admin_delivery_status: DeliveryAdminStatus;
   failure_note: string | null;
+  packaging_notes: string | null;
   recurring_order_id: string | null;
   created_at: string;
   updated_at: string;
@@ -134,3 +135,6 @@ export interface MarkPaidResult {
 
 // Low balance threshold in UGX
 export const LOW_BALANCE_THRESHOLD = 5000;
+
+// Debt block threshold: orders blocked when balance falls below this (negative)
+export const DEBT_BLOCK_THRESHOLD = -10000;
