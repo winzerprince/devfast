@@ -62,7 +62,7 @@ export function TopBar() {
   const meta =
     pathname === "/dashboard"
       ? (DASHBOARD_TAB_META[currentHash] ?? DASHBOARD_TAB_META[""])
-      : (ROUTE_META[pathname] ?? { title: "DevFast", description: "" });
+      : (ROUTE_META[pathname] ?? { title: "EarlyBird", description: "" });
 
   const today = format(new Date(), "EEEE, MMMM d, yyyy");
 

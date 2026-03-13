@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Coffee, LogOut } from "lucide-react";
+import Image from "next/image";
+import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import type { Profile } from "@/lib/types";
 
@@ -19,13 +20,13 @@ interface NavbarProps {
 }
 
 function getPageTitle(pathname: string): string {
-  if (pathname === "/dashboard") return "DevFast";
+  if (pathname === "/dashboard") return "EarlyBird";
   if (pathname.startsWith("/orders/history")) return "Order History";
   if (pathname === "/admin/dashboard") return "Dashboard";
   if (pathname === "/admin/orders") return "Orders";
   if (pathname === "/admin/menu") return "Menu";
   if (pathname === "/admin/users") return "Users";
-  return "DevFast";
+  return "EarlyBird";
 }
 
 export function Navbar({ profile }: NavbarProps) {
@@ -47,7 +48,7 @@ export function Navbar({ profile }: NavbarProps) {
     <header className="md:hidden sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex items-center h-14 px-4 pt-[env(safe-area-inset-top)]">
         <div className="w-10 flex items-center">
-          <Coffee className="h-5 w-5 text-primary" />
+          <Image src="/logo.png" alt="EarlyBird" width={24} height={24} className="rounded" />
         </div>
         <div className="flex-1 text-center">
           <span className="font-semibold text-sm">{pageTitle}</span>

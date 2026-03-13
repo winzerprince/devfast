@@ -1,7 +1,7 @@
-# DevFast - Progress Tracker
+# EarlyBird - Progress Tracker
 
 ## Project Overview
-**DevFast** — Breakfast order & subscription management system for a small office team.
+**EarlyBird** — Breakfast order & subscription management system for a small office team.
 - Admin manages menu, user balances (cash top-ups), and orders
 - Users sign up, place orders for next-day breakfast (cutoff 8 PM), view balance/history
 - No online payments — admin tops up balances manually

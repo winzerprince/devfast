@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
-  Coffee,
   Home,
   ShoppingCart,
   RotateCw,
@@ -84,8 +84,10 @@ export function Sidebar({ profile }: SidebarProps) {
     <aside className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-64 z-40 bg-gradient-to-b from-primary to-orange-700">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-6 h-16 border-b border-white/15 shrink-0">
-        <Coffee className="h-5 w-5 text-white" />
-        <span className="font-bold text-lg text-white">DevFast</span>
+        <div className="bg-white rounded-lg p-1 shrink-0">
+          <Image src="/logo.png" alt="EarlyBird" width={26} height={26} className="rounded" />
+        </div>
+        <span className="font-bold text-lg text-white">EarlyBird</span>
       </div>
 
       {/* Nav items */}

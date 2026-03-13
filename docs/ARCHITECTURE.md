@@ -1,4 +1,4 @@
-# DevFast Architecture
+# EarlyBird Architecture
 
 ## Folder Structure
 ```

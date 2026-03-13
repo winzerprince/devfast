@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "DevFast - Breakfast Made Easy",
-    short_name: "DevFast",
+    name: "EarlyBird - Breakfast Made Easy",
+    short_name: "EarlyBird",
     description: "Breakfast order & subscription management for your team",
     start_url: "/dashboard",
     display: "standalone",
