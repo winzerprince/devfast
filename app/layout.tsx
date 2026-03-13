@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -56,6 +57,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
         suppressHydrationWarning
       >
+        <div id="splash" aria-hidden="true">
+          <div id="splash-logo">
+            <Image src="/logo.png" alt="" width={72} height={72} priority />
+          </div>
+          <p id="splash-text">EarlyBird</p>
+        </div>
         {children}
         <Toaster position="top-center" richColors />
       </body>

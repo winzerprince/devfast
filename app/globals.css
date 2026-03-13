@@ -121,6 +121,49 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ── Splash screen ─────────────────────────────────────────────────────── */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: #f97316;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  pointer-events: none;
+  animation: splash-exit 0.4s ease-out 1.4s forwards;
+}
+
+#splash-logo {
+  filter: brightness(0) invert(1);
+  animation: splash-logo-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+#splash-text {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  animation: splash-text-rise 0.4s ease-out 0.35s forwards;
+}
+
+@keyframes splash-logo-pop {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes splash-text-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes splash-exit {
+  to { opacity: 0; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

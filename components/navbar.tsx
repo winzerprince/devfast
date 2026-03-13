@@ -46,7 +46,9 @@ export function Navbar({ profile }: NavbarProps) {
   // Mobile-only top header — desktop navigation is handled by the Sidebar
   return (
     <header className="md:hidden sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="flex items-center h-14 px-4 pt-[env(safe-area-inset-top)]">
+      {/* Fills the iOS status bar area with the theme color (transparent status bar shows whatever is behind it) */}
+      <div className="h-[env(safe-area-inset-top)] bg-primary" />
+      <div className="flex items-center h-14 px-4">
         <div className="w-10 flex items-center">
           <Image src="/logo.png" alt="EarlyBird" width={24} height={24} className="rounded" />
         </div>
