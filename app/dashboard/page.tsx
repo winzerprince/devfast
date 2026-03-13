@@ -5,19 +5,13 @@ import { OrderForm } from "@/components/order-form";
 import { UpcomingOrders } from "@/components/upcoming-orders";
 import { DrainModeCard } from "@/components/drain-mode-card";
 import { RecurringOrdersManager } from "@/components/recurring-orders-manager";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardTabs } from "@/components/dashboard-tabs";
 import { SpendingSummary } from "@/components/spending-summary";
 import type { MenuItem, Order, Profile, RecurringOrder } from "@/lib/types";
+import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
 import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
-  const { tab } = await searchParams;
-  const validTabs = ["overview", "new-order", "recurring", "upcoming"];
-  const defaultTab = tab && validTabs.includes(tab) ? tab : "overview";
+export default async function DashboardPage() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,7 +26,6 @@ export default async function DashboardPage({
   const monthStart = format(startOfMonth(today), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(today), "yyyy-MM-dd");
 
-  // Fetch profile, menu items, and upcoming orders in parallel
   const [profileRes, menuRes, ordersRes, recurringRes, weeklySpendRes, monthlySpendRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("menu_items").select("*").eq("is_active", true).order("price", { ascending: true }),
@@ -74,19 +67,17 @@ export default async function DashboardPage({
 
   if (!profile) redirect("/auth/signin");
 
-  // Determine order date and cutoff
   const now = new Date();
   const kampalaNow = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Kampala" }));
   const hour = kampalaNow.getHours();
   const isPastCutoff = hour >= 20;
-  
+
   const orderDate = isPastCutoff ? addDays(new Date(), 2) : addDays(new Date(), 1);
   const orderDateLabel = format(orderDate, "EEEE, MMM d");
   const cutoffMessage = isPastCutoff
     ? "It's past 8 PM. Orders are now for " + format(addDays(new Date(), 2), "EEEE, MMM d") + "."
     : "Order before 8 PM tonight for tomorrow's breakfast.";
 
-  // Fetch availability for the order date
   const orderDateStr = format(orderDate, "yyyy-MM-dd");
   const { data: availabilityData } = await supabase
     .from("menu_availability")
@@ -98,31 +89,29 @@ export default async function DashboardPage({
     : null;
 
   const cheapestItem = menuItems.length > 0 ? menuItems[0].price : undefined;
+  const isDebtBlocked = profile.balance < DEBT_BLOCK_THRESHOLD;
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto">
-      <div className="pt-1">
+    <div className="space-y-5 max-w-2xl mx-auto md:max-w-3xl">
+      {/* Mobile greeting (desktop uses TopBar for page title) */}
+      <div className="pt-1 md:hidden">
         <h1 className="text-2xl font-bold">
           Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, {profile.full_name?.split(" ")[0] || "there"}!
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">{cutoffMessage}</p>
       </div>
+      {/* Desktop cutoff nudge */}
+      <p className="hidden md:block text-sm text-muted-foreground">{cutoffMessage}</p>
 
-      <Tabs defaultValue={defaultTab} key={defaultTab} className="w-full">
-        <TabsList className="hidden md:grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="new-order">New Order</TabsTrigger>
-          <TabsTrigger value="recurring">Recurring</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-4 space-y-4">
-          <BalanceCard balance={profile.balance} outstandingDebt={profile.outstanding_debt} cheapestItem={cheapestItem} />
-          <SpendingSummary weeklySpending={weeklySpending} monthlySpending={monthlySpending} />
-          <DrainModeCard currentMode={profile.drain_mode} />
-        </TabsContent>
-
-        <TabsContent value="new-order" className="mt-4">
+      <DashboardTabs
+        overview={
+          <>
+            <BalanceCard balance={profile.balance} outstandingDebt={profile.outstanding_debt} cheapestItem={cheapestItem} />
+            <SpendingSummary weeklySpending={weeklySpending} monthlySpending={monthlySpending} />
+            <DrainModeCard currentMode={profile.drain_mode} />
+          </>
+        }
+        newOrder={
           <OrderForm
             menuItems={menuItems}
             availableItemIds={availableItemIds}
@@ -131,17 +120,16 @@ export default async function DashboardPage({
             orderDateLabel={orderDateLabel}
             canOrder={true}
             cutoffMessage={cutoffMessage}
+            isDebtBlocked={isDebtBlocked}
           />
-        </TabsContent>
-
-        <TabsContent value="recurring" className="mt-4">
+        }
+        recurring={
           <RecurringOrdersManager menuItems={menuItems} recurringOrders={recurringOrders} userId={user.id} />
-        </TabsContent>
-
-        <TabsContent value="upcoming" className="mt-4">
+        }
+        upcoming={
           <UpcomingOrders orders={upcomingOrders} />
-        </TabsContent>
-      </Tabs>
+        }
+      />
     </div>
   );
 }

@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EarlyBird
+
+> Breakfast order & subscription management for your office team.
+
+EarlyBird is a PWA-first web application that lets a small office team pre-order breakfast through a simple, cash-based wallet system. An admin manages the menu and tops up user balances; team members place orders before the 8 PM daily cutoff and track their breakfast history.
+
+---
+
+## Features
+
+- **Wallet system** — prepaid balances topped up by admin; ordering blocked below –10,000 UGX
+- **Multi-item orders** — place multiple items in a single transaction with optional packaging notes
+- **Recurring schedules** — set weekly breakfast schedules that auto-sync 14 days ahead
+- **Dual delivery confirmation** — both user and admin confirm delivery; discrepancies trigger a review flow
+- **Three payment modes** — prepaid (wallet), pay on delivery, or pay later
+- **Admin dashboard** — manage the menu, top up user balances, and review all orders
+- **PWA-ready** — installable on iOS & Android with a maskable icon and offline service worker
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| UI | Tailwind CSS v4 + shadcn/ui (New York) |
+| Auth | Supabase Auth (email + password) |
+| Database | Supabase PostgreSQL with Row Level Security |
+| PWA | Serwist service worker |
+| Fonts | Geist (Vercel) |
+| Currency | UGX (Ugandan Shillings) |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- A [Supabase](https://supabase.com) project
+
+### Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repo-url>
+   cd devfast
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+
+   Create a `.env.local` file in the project root:
+
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+   ```
+
+4. **Apply the database schema**
+
+   Run the SQL in `docs/schema.sql` in your Supabase SQL editor to create all tables, RLS policies, and RPC functions.
+
+5. **Start the development server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev      # Start development server
+npm run build    # Production build
+npm run start    # Start production server
+npm run lint     # Run ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+├── app/
+│   ├── page.tsx              # Landing page
+│   ├── manifest.ts           # PWA manifest
+│   ├── auth/                 # Sign in / Sign up / Verify
+│   ├── dashboard/            # User dashboard (Overview, New Order, Recurring, Upcoming tabs)
+│   ├── orders/history/       # Order history
+│   └── admin/                # Admin-only pages (Dashboard, Orders, Menu, Users)
+├── components/
+│   ├── ui/                   # shadcn/ui primitives
+│   ├── sidebar.tsx           # Desktop fixed sidebar with gradient
+│   ├── navbar.tsx            # Mobile top bar
+│   ├── bottom-nav.tsx        # Mobile bottom navigation
+│   ├── top-bar.tsx           # Desktop top bar (page title + date)
+│   └── ...                   # Feature components (order form, balance card, etc.)
+├── lib/
+│   ├── supabase/             # Browser / server / middleware Supabase clients
+│   └── types.ts              # TypeScript types matching DB schema
+├── docs/
+│   ├── schema.sql            # Database schema & migration history
+│   └── ...
+└── public/
+    ├── logo.png              # App logo
+    └── icons/                # PWA icons (192×192, 512×512, maskable, apple-touch)
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Key Business Rules
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Orders must be placed before **8 PM Africa/Kampala** for next-day delivery
+- Low balance warning at **5,000 UGX**; ordering blocked below **–10,000 UGX**
+- Currency: **UGX (Ugandan Shillings)**
+- Delivery confirmed by **both** the user and admin independently
+- No online payments — admin tops up balances manually after receiving cash
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private — all rights reserved.

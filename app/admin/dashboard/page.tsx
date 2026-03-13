@@ -91,7 +91,8 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-muted-foreground pt-1">{format(now, "EEEE, MMMM d, yyyy")}</p>
+      {/* Date shown in TopBar on desktop; visible only on mobile */}
+      <p className="text-xs text-muted-foreground pt-1 md:hidden">{format(now, "EEEE, MMMM d, yyyy")}</p>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Coffee, Home, History, LayoutDashboard, Users, UtensilsCrossed, ClipboardList, LogOut } from "lucide-react";
+import Image from "next/image";
+import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import type { Profile } from "@/lib/types";
 
@@ -20,36 +19,22 @@ interface NavbarProps {
   profile: Profile;
 }
 
-const userLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/orders/history", label: "Order History", icon: History },
-];
-
-const adminLinks = [
-  { href: "/admin/dashboard", label: "Admin Home", icon: LayoutDashboard },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
-  { href: "/admin/orders", label: "Orders", icon: ClipboardList },
-];
-
 function getPageTitle(pathname: string): string {
-  if (pathname === "/dashboard") return "DevFast";
+  if (pathname === "/dashboard") return "EarlyBird";
   if (pathname.startsWith("/orders/history")) return "Order History";
   if (pathname === "/admin/dashboard") return "Dashboard";
   if (pathname === "/admin/orders") return "Orders";
   if (pathname === "/admin/menu") return "Menu";
   if (pathname === "/admin/users") return "Users";
-  return "DevFast";
+  return "EarlyBird";
 }
 
 export function Navbar({ profile }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-
-  const isAdmin = profile.role === "admin";
-  const links = isAdmin ? [...userLinks, ...adminLinks] : userLinks;
   const pageTitle = getPageTitle(pathname);
+  const initial = (profile.full_name || "U").charAt(0).toUpperCase();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -58,14 +43,12 @@ export function Navbar({ profile }: NavbarProps) {
     router.refresh();
   }
 
-  const initial = (profile.full_name || "U").charAt(0).toUpperCase();
-
+  // Mobile-only top header — desktop navigation is handled by the Sidebar
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      {/* Mobile header: icon | page title | avatar */}
-      <div className="md:hidden flex items-center h-14 px-4 pt-[env(safe-area-inset-top)]">
+    <header className="md:hidden sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <div className="flex items-center h-14 px-4 pt-[env(safe-area-inset-top)]">
         <div className="w-10 flex items-center">
-          <Coffee className="h-5 w-5 text-primary" />
+          <Image src="/logo.png" alt="EarlyBird" width={24} height={24} className="rounded" />
         </div>
         <div className="flex-1 text-center">
           <span className="font-semibold text-sm">{pageTitle}</span>
@@ -92,38 +75,6 @@ export function Navbar({ profile }: NavbarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-
-      {/* Desktop header: logo | nav links */}
-      <div className="hidden md:flex container mx-auto px-4 h-14 items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
-          <Coffee className="h-5 w-5 text-primary" />
-          <span>DevFast</span>
-        </Link>
-
-        <nav className="flex items-center gap-1">
-          {links.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Button
-                key={link.href}
-                variant={isActive ? "secondary" : "ghost"}
-                size="sm"
-                asChild
-              >
-                <Link href={link.href}>
-                  <Icon className="h-4 w-4 mr-1" />
-                  {link.label}
-                </Link>
-              </Button>
-            );
-          })}
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-1" />
-            Sign Out
-          </Button>
-        </nav>
       </div>
     </header>
   );

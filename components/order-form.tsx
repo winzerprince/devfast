@@ -4,10 +4,11 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Minus, Plus, Sparkles, ImageIcon } from "lucide-react";
+import { AlertTriangle, Loader2, Minus, Plus, Sparkles, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import type { DrainMode, MenuItem, PaymentMethod, PlaceOrderResult } from "@/lib/types";
+import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
 
 interface OrderFormProps {
   menuItems: MenuItem[];
@@ -17,11 +18,43 @@ interface OrderFormProps {
   orderDateLabel: string;
   canOrder: boolean;
   cutoffMessage: string;
+  isDebtBlocked: boolean;
 }
 
-export function OrderForm({ menuItems, availableItemIds, balance, drainMode, orderDateLabel, canOrder, cutoffMessage }: OrderFormProps) {
+const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; description: (drainMode: DrainMode) => string }[] = [
+  {
+    value: "prepaid",
+    label: "From Balance",
+    description: (drainMode) =>
+      drainMode === "automatic"
+        ? "Deducted from your wallet immediately when order is placed."
+        : "Deducted from your wallet after delivery is confirmed.",
+  },
+  {
+    value: "pay_on_delivery",
+    label: "On Delivery",
+    description: () => "Pay cash on delivery. Your wallet is updated when admin confirms delivery.",
+  },
+  {
+    value: "pay_later",
+    label: "Pay Later",
+    description: () => "Receive now, settle later. Your wallet balance will reflect the debt.",
+  },
+];
+
+export function OrderForm({
+  menuItems,
+  availableItemIds,
+  balance,
+  drainMode,
+  orderDateLabel,
+  canOrder,
+  cutoffMessage,
+  isDebtBlocked,
+}: OrderFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("prepaid");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [packagingNotes, setPackagingNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
@@ -30,7 +63,7 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
     : menuItems;
 
   function increment(id: string) {
-    if (!canOrder) return;
+    if (!canOrder || isDebtBlocked) return;
     setQuantities((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
   }
 
@@ -52,20 +85,22 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
     return sum + (item ? item.price * line.quantity : 0);
   }, 0);
 
+  const insufficientBalance =
+    paymentMethod === "prepaid" && drainMode === "automatic" && balance < orderTotal;
+
   const canAfford =
-    paymentMethod === "pay_on_delivery"
-      ? orderLines.length > 0
-      : drainMode === "confirmation"
-        ? orderLines.length > 0
-        : balance >= orderTotal && orderLines.length > 0;
+    !isDebtBlocked &&
+    orderLines.length > 0 &&
+    !insufficientBalance;
 
   async function handlePlaceOrder() {
-    if (orderLines.length === 0 || !canOrder) return;
+    if (orderLines.length === 0 || !canOrder || isDebtBlocked) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("place_multi_order", {
         p_items: orderLines,
         p_payment_method: paymentMethod,
+        p_packaging_notes: packagingNotes.trim() || null,
       });
 
       if (error) { toast.error(error.message); return; }
@@ -73,9 +108,14 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
       const result = data as unknown as PlaceOrderResult;
       if (result.error) { toast.error(result.error); return; }
 
-      const methodLabel = paymentMethod === "pay_on_delivery" ? " · Pay on delivery" : "";
-      toast.success(`Order placed! ${Number(result.total).toLocaleString()} UGX${methodLabel}`);
+      const methodLabels: Record<PaymentMethod, string> = {
+        prepaid: "",
+        pay_on_delivery: " · Pay on delivery",
+        pay_later: " · Pay later",
+      };
+      toast.success(`Order placed! ${Number(result.total).toLocaleString()} UGX${methodLabels[paymentMethod]}`);
       setQuantities({});
+      setPackagingNotes("");
       window.location.reload();
     } catch {
       toast.error("Failed to place order");
@@ -84,45 +124,53 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
     }
   }
 
+  const selectedOption = PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)!;
+
   return (
     <div className="space-y-4">
+      {/* Debt block banner */}
+      {isDebtBlocked && (
+        <div className="flex items-start gap-2.5 rounded-2xl bg-destructive/10 border border-destructive/20 px-4 py-3.5 text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold">Orders suspended</p>
+            <p className="text-xs mt-0.5 text-destructive/80">
+              Your outstanding balance has exceeded {Math.abs(DEBT_BLOCK_THRESHOLD).toLocaleString()} UGX.
+              Please settle your debt with the admin before placing new orders.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Date info bar */}
       <div className="rounded-2xl bg-primary/8 border border-primary/20 px-4 py-3">
         <p className="text-sm font-semibold">Ordering for {orderDateLabel}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{cutoffMessage}</p>
       </div>
 
-      {/* Payment method — segmented control */}
+      {/* Payment method — 3-option segmented control */}
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payment</p>
         <div className="flex rounded-xl border overflow-hidden">
-          <button
-            onClick={() => setPaymentMethod("prepaid")}
-            className={`flex-1 py-2.5 text-sm font-medium transition-colors active:opacity-80 ${
-              paymentMethod === "prepaid"
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground"
-            }`}
-          >
-            From Balance
-          </button>
-          <button
-            onClick={() => setPaymentMethod("pay_on_delivery")}
-            className={`flex-1 py-2.5 text-sm font-medium transition-colors border-l active:opacity-80 ${
-              paymentMethod === "pay_on_delivery"
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground"
-            }`}
-          >
-            On Delivery
-          </button>
+          {PAYMENT_OPTIONS.map((opt, idx) => (
+            <button
+              key={opt.value}
+              onClick={() => setPaymentMethod(opt.value)}
+              disabled={isDebtBlocked}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors active:opacity-80 disabled:opacity-40 ${
+                idx > 0 ? "border-l" : ""
+              } ${
+                paymentMethod === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          {paymentMethod === "pay_on_delivery"
-            ? "You pay when you receive your order."
-            : drainMode === "automatic"
-              ? "Balance charged immediately when order is placed."
-              : "Balance charged after delivery is confirmed."}
+          {selectedOption.description(drainMode)}
         </p>
       </div>
 
@@ -145,7 +193,7 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
                   key={item.id}
                   className={`flex items-center gap-3 rounded-2xl border p-3 transition-colors ${
                     qty > 0 ? "border-primary/40 bg-primary/5" : "bg-card"
-                  }`}
+                  } ${isDebtBlocked ? "opacity-50" : ""}`}
                 >
                   {/* Thumbnail */}
                   <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-muted">
@@ -178,7 +226,7 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
                   {qty === 0 ? (
                     <button
                       onClick={() => increment(item.id)}
-                      disabled={!canOrder || loading}
+                      disabled={!canOrder || loading || isDebtBlocked}
                       className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
                     >
                       <Plus className="h-4 w-4" />
@@ -195,7 +243,7 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
                       <span className="w-5 text-center font-semibold text-sm">{qty}</span>
                       <button
                         onClick={() => increment(item.id)}
-                        disabled={loading}
+                        disabled={loading || isDebtBlocked}
                         className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -209,7 +257,7 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
         )}
       </div>
 
-      {/* Order summary + place button */}
+      {/* Order summary + packaging notes + place button */}
       {orderLines.length > 0 && (
         <div className="rounded-2xl border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -222,7 +270,21 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
             </span>
           </div>
 
-          {paymentMethod === "prepaid" && drainMode === "automatic" && !canAfford && (
+          {/* Packaging notes */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              Packaging instructions <span className="font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={packagingNotes}
+              onChange={(e) => setPackagingNotes(e.target.value)}
+              placeholder="e.g. Pack separately, no onions on the chapati…"
+              rows={2}
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+          </div>
+
+          {insufficientBalance && (
             <p className="text-xs text-destructive">
               Insufficient balance — {Number(balance).toLocaleString()} UGX available
             </p>
@@ -234,7 +296,11 @@ export function OrderForm({ menuItems, availableItemIds, balance, drainMode, ord
             disabled={!canAfford || !canOrder || loading}
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {paymentMethod === "pay_on_delivery" ? "Place Order · Pay on Delivery" : "Place Order"}
+            {paymentMethod === "pay_on_delivery"
+              ? "Place Order · Pay on Delivery"
+              : paymentMethod === "pay_later"
+                ? "Place Order · Pay Later"
+                : "Place Order"}
           </Button>
         </div>
       )}

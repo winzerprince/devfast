@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DevFast is a breakfast order and subscription management system for a small office team. An admin manages the menu and user balances (cash-based, no online payments), while users place/cancel orders, set up recurring schedules, and track their balance. Currency is UGX (Ugandan Shillings).
+EarlyBird is a breakfast order and subscription management system for a small office team. An admin manages the menu and user balances (cash-based, no online payments), while users place/cancel orders, set up recurring schedules, and track their balance. Currency is UGX (Ugandan Shillings).
 
 ## Commands
 

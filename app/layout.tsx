@@ -23,12 +23,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "DevFast - Breakfast Made Easy",
+  title: "EarlyBird - Breakfast Made Easy",
   description: "Breakfast order & subscription management for your team",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "DevFast",
+    title: "EarlyBird",
   },
   icons: {
     icon: [
@@ -53,6 +53,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
+        suppressHydrationWarning
       >
         {children}
         <Toaster position="top-center" richColors />

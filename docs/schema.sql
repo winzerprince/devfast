@@ -99,3 +99,22 @@ CREATE INDEX IF NOT EXISTS idx_menu_availability_date ON public.menu_availabilit
 -- (Already applied via Supabase MCP)
 -- ============================================
 -- See PROGRESS.md for full RLS policy list
+
+-- ============================================
+-- MIGRATIONS (run in Supabase SQL Editor)
+-- ============================================
+
+-- M1: Add packaging_notes to orders
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS packaging_notes TEXT;
+
+-- M2: Add pay_later as a valid payment_method
+-- (Drop and recreate the CHECK constraint)
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
+ALTER TABLE public.orders
+  ADD CONSTRAINT orders_payment_method_check
+  CHECK (payment_method IN ('prepaid', 'pay_on_delivery', 'pay_later'));
+
+-- M3: Update place_multi_order RPC to accept p_packaging_notes TEXT parameter
+--     and store it on each created order row.
+--     Update admin_review_order to deduct balance for pay_on_delivery/pay_later
+--     orders when action = 'confirm_delivery' (wallet is always the ledger).
