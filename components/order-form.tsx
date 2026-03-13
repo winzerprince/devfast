@@ -85,13 +85,7 @@ export function OrderForm({
     return sum + (item ? item.price * line.quantity : 0);
   }, 0);
 
-  const insufficientBalance =
-    paymentMethod === "prepaid" && drainMode === "automatic" && balance < orderTotal;
-
-  const canAfford =
-    !isDebtBlocked &&
-    orderLines.length > 0 &&
-    !insufficientBalance;
+  const canAfford = !isDebtBlocked && orderLines.length > 0;
 
   async function handlePlaceOrder() {
     if (orderLines.length === 0 || !canOrder || isDebtBlocked) return;
@@ -283,12 +277,6 @@ export function OrderForm({
               className="w-full rounded-xl border bg-background px-3 py-2 text-sm resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
           </div>
-
-          {insufficientBalance && (
-            <p className="text-xs text-destructive">
-              Insufficient balance — {Number(balance).toLocaleString()} UGX available
-            </p>
-          )}
 
           <Button
             onClick={handlePlaceOrder}
