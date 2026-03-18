@@ -2,10 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
   const publicRoutes = ["/", "/auth/signin", "/auth/signup", "/auth/verify", "/auth/callback", "/auth/confirm"];
+  const isPublicAuthApiRoute = pathname.startsWith("/api/auth/");
   const isPublicRoute = publicRoutes.some(
-    (route) => request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith("/auth/")
-  );
+    (route) => pathname === route || pathname.startsWith("/auth/")
+  ) || isPublicAuthApiRoute;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -70,7 +72,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
-  if (user && request.nextUrl.pathname.startsWith("/auth/")) {
+  if (user && pathname.startsWith("/auth/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
