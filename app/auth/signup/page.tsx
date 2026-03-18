@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
@@ -22,25 +21,35 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+        }),
       });
 
-      if (error) {
-        toast.error(error.message);
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        toast.error(data.error ?? "Could not create your account.");
         return;
       }
 
-      toast.success("Check your email to verify your account!");
-      router.push("/auth/verify");
+      if (data.error) {
+        toast(data.error);
+        router.push("/auth/signin");
+        router.refresh();
+        return;
+      }
+
+      toast.success("Account created. You are now signed in.");
+      router.push("/dashboard");
+      router.refresh();
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
