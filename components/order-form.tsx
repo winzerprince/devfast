@@ -151,6 +151,7 @@ export function OrderForm({
               key={opt.value}
               onClick={() => setPaymentMethod(opt.value)}
               disabled={isDebtBlocked}
+              aria-label={`payment-method-${opt.value}`}
               className={`flex-1 py-2.5 text-sm font-medium transition-colors active:opacity-80 disabled:opacity-40 ${
                 idx > 0 ? "border-l" : ""
               } ${
@@ -221,6 +222,7 @@ export function OrderForm({
                     <button
                       onClick={() => increment(item.id)}
                       disabled={!canOrder || loading || isDebtBlocked}
+                      aria-label={`add-${item.name}`}
                       className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40 shrink-0"
                     >
                       <Plus className="h-4 w-4" />
@@ -230,6 +232,7 @@ export function OrderForm({
                       <button
                         onClick={() => decrement(item.id)}
                         disabled={loading}
+                        aria-label={`remove-${item.name}`}
                         className="h-8 w-8 rounded-full border flex items-center justify-center active:scale-95 transition-transform"
                       >
                         <Minus className="h-3.5 w-3.5" />
@@ -238,6 +241,7 @@ export function OrderForm({
                       <button
                         onClick={() => increment(item.id)}
                         disabled={loading || isDebtBlocked}
+                        aria-label={`add-${item.name}`}
                         className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-transform"
                       >
                         <Plus className="h-3.5 w-3.5" />
