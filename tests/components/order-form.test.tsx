@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrderForm } from "@/components/order-form";
 import type { MenuItem } from "@/lib/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcMock = vi.fn();
 
