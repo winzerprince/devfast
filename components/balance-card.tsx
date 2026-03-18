@@ -1,5 +1,6 @@
 import { AlertTriangle, Coffee, Wallet } from "lucide-react";
-import { DEBT_BLOCK_THRESHOLD, LOW_BALANCE_THRESHOLD } from "@/lib/types";
+import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
+import { getBalanceStatus } from "@/lib/order-rules";
 
 interface BalanceCardProps {
   balance: number;
@@ -8,11 +9,11 @@ interface BalanceCardProps {
 }
 
 export function BalanceCard({ balance, outstandingDebt = 0, cheapestItem }: BalanceCardProps) {
-  const threshold = cheapestItem ? Math.max(cheapestItem, LOW_BALANCE_THRESHOLD) : LOW_BALANCE_THRESHOLD;
-  const isLow = balance >= 0 && balance < threshold;
-  const isNegative = balance < 0;
-  const isDebtBlocked = balance < DEBT_BLOCK_THRESHOLD;
-  const hasDebt = outstandingDebt > 0;
+  const { isLow, isNegative, isDebtBlocked, hasDebt } = getBalanceStatus(
+    balance,
+    outstandingDebt,
+    cheapestItem,
+  );
 
   return (
     <div className="space-y-2">

@@ -9,6 +9,12 @@ import { toast } from "sonner";
 import Image from "next/image";
 import type { DrainMode, MenuItem, PaymentMethod, PlaceOrderResult } from "@/lib/types";
 import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
+import {
+  buildOrderLines,
+  calculateOrderTotal,
+  canPlaceOrder,
+  hasInsufficientBalance,
+} from "@/lib/order-rules";
 
 interface OrderFormProps {
   menuItems: MenuItem[];
@@ -76,22 +82,10 @@ export function OrderForm({
     });
   }
 
-  const orderLines = Object.entries(quantities)
-    .filter(([, qty]) => qty > 0)
-    .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity }));
-
-  const orderTotal = orderLines.reduce((sum, line) => {
-    const item = menuItems.find((m) => m.id === line.menu_item_id);
-    return sum + (item ? item.price * line.quantity : 0);
-  }, 0);
-
-  const insufficientBalance =
-    paymentMethod === "prepaid" && drainMode === "automatic" && balance < orderTotal;
-
-  const canAfford =
-    !isDebtBlocked &&
-    orderLines.length > 0 &&
-    !insufficientBalance;
+  const orderLines = buildOrderLines(quantities);
+  const orderTotal = calculateOrderTotal(orderLines, menuItems);
+  const insufficientBalance = hasInsufficientBalance(balance, orderTotal, paymentMethod, drainMode);
+  const canAfford = canPlaceOrder(orderLines, isDebtBlocked, insufficientBalance);
 
   async function handlePlaceOrder() {
     if (orderLines.length === 0 || !canOrder || isDebtBlocked) return;

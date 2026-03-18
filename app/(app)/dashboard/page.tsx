@@ -9,8 +9,8 @@ import { RecurringOrdersManager } from "@/components/recurring-orders-manager";
 import { DashboardTabs } from "@/components/dashboard-tabs";
 import { SpendingSummary } from "@/components/spending-summary";
 import type { MenuItem, Order, RecurringOrder } from "@/lib/types";
-import { DEBT_BLOCK_THRESHOLD } from "@/lib/types";
-import { format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { getBalanceStatus, getKampalaNow, getOrderWindow } from "@/lib/order-rules";
 
 export default async function DashboardPage() {
   // Cached — no extra round-trip; the (app) layout already fetched this.
@@ -64,16 +64,9 @@ export default async function DashboardPage() {
   const weeklySpending = (weeklySpendRes.data || []).reduce((sum: number, o: { total_price: number }) => sum + Number(o.total_price), 0);
   const monthlySpending = (monthlySpendRes.data || []).reduce((sum: number, o: { total_price: number }) => sum + Number(o.total_price), 0);
 
-  const now = new Date();
-  const kampalaNow = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Kampala" }));
+  const kampalaNow = getKampalaNow();
   const hour = kampalaNow.getHours();
-  const isPastCutoff = hour >= 20;
-
-  const orderDate = isPastCutoff ? addDays(new Date(), 2) : addDays(new Date(), 1);
-  const orderDateLabel = format(orderDate, "EEEE, MMM d");
-  const cutoffMessage = isPastCutoff
-    ? "It's past 8 PM. Orders are now for " + format(addDays(new Date(), 2), "EEEE, MMM d") + "."
-    : "Order before 8 PM tonight for tomorrow's breakfast.";
+  const { orderDate, orderDateLabel, cutoffMessage } = getOrderWindow(kampalaNow);
 
   const orderDateStr = format(orderDate, "yyyy-MM-dd");
   const { data: availabilityData } = await supabase
@@ -86,7 +79,7 @@ export default async function DashboardPage() {
     : null;
 
   const cheapestItem = menuItems.length > 0 ? menuItems[0].price : undefined;
-  const isDebtBlocked = profile.balance < DEBT_BLOCK_THRESHOLD;
+  const { isDebtBlocked } = getBalanceStatus(profile.balance, profile.outstanding_debt, cheapestItem);
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto md:max-w-3xl">
