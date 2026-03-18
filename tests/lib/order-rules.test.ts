@@ -7,6 +7,7 @@ import {
   hasInsufficientBalance,
 } from "@/lib/order-rules";
 import type { MenuItem } from "@/lib/types";
+import { describe, expect, it } from "vitest";
 
 describe("order-rules", () => {
   it("uses tomorrow when before 8 PM cutoff", () => {
