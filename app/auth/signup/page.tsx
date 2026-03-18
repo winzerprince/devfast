@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
@@ -33,17 +34,27 @@ export default function SignUpPage() {
         }),
       });
 
-      const data = (await response.json()) as { error?: string };
+      let data: { error?: string; success?: boolean } = {};
+      try {
+        data = (await response.json()) as { error?: string; success?: boolean };
+      } catch {
+        // Preserve explicit fallback below for non-JSON server failures.
+      }
 
       if (!response.ok) {
-        toast.error(data.error ?? "Could not create your account.");
+        toast.error(data.error ?? "Could not create your account right now.");
         return;
       }
 
-      if (data.error) {
-        toast(data.error);
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        toast("Account created. Please sign in manually.");
         router.push("/auth/signin");
-        router.refresh();
         return;
       }
 

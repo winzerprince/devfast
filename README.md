@@ -62,6 +62,7 @@ EarlyBird is a PWA-first web application that lets a small office team pre-order
    ```env
    NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
    NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+   SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
    ```
 
 4. **Apply the database schema**

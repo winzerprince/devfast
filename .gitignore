@@ -52,3 +52,4 @@ public/sw.js
 public/sw.js.map
 public/serwist-*.js
 public/workbox-*.js
+.env*.local
